@@ -465,7 +465,11 @@ function webform_ab_validate($node, &$form) {
  * Save new Webform A/B Test nodes. Just calls webform_ab_update
  */
 function webform_ab_insert($node) {
-  return webform_ab_update($node, TRUE);
+  $nid = webform_ab_update($node, TRUE);
+  if ($nid > 0) {
+    // If the save was successfull, redirect the user to the Included Webforms tab
+    drupal_goto('node/' . $nid . '/webforms');
+  }  
 }
 
 
@@ -498,6 +502,9 @@ function webform_ab_update($node, $is_insert = FALSE) {
   }
     
   db_query($sql, $replacement_values);
+  if ($is_insert) {
+    return db_last_insert_id('node', 'nid');
+  }
 }
 
 
