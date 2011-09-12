@@ -1,6 +1,4 @@
 <?php
-// $Id$
-
 /**
  * @file
  *   Webform A/B install/schema hooks

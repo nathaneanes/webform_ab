@@ -292,7 +292,7 @@ function webform_ab_form(&$node, $form_state) {
   
   $form['winning_conditions']['win_type']['percent_conversions_group']['percent_conversions_radio'] = array(
     '#type' => 'radio',
-    '#title' => $win_conditions['total_conversions'],
+    '#title' => $win_conditions['percent_conversions'],
     '#description' => t('A webform must reach this percentage of conversions to be declared the winner.'),
     '#return_value' => 'percent_conversions',
     '#parents' => array('win_type'),
@@ -743,9 +743,18 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       );
       return $node;
     }
+    // Full node view: redirect to one of the included webforms
     else {
+      // Pick query variables to pass along
+      $query_vars = $_GET;
+      unset($query_vars['q']);
+      
+      
+      // If this test has a winner, send them there
       if (($winner_webform_id = _webform_ab_has_winner_already($node)) > 0) {
-        drupal_goto('node/' . $winner_webform_id);
+        // Save it to the $_SESSION so that it will be logged as a hit to the form
+        $_SESSION['webform_ab']['webform_for_tests'][$node->nid] = $winner_webform_id;
+        drupal_goto('node/' . $winner_webform_id, $query_vars);
       }
       // See if they already have a webform nid in their $_SESSION for this test, and
       // that it's still a valid webform nid for this test (in case the webform was
@@ -772,7 +781,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
           // Save it to the $_SESSION so this user always gets the same one
           $_SESSION['webform_ab']['webform_for_tests'][$node->nid] = $webform_nid_to_view;
         }
-        drupal_goto('node/' . $_SESSION['webform_ab']['webform_for_tests'][$node->nid]);
+        drupal_goto('node/' . $_SESSION['webform_ab']['webform_for_tests'][$node->nid], $query_vars);
       }
     }
   }
@@ -874,6 +883,7 @@ function webform_ab_form_alter(&$form, $form_state, $form_id) {
             // If the hit should be logged, do so
             if ($log_hit) {
               db_query("INSERT INTO {webform_ab_hits} (test_nid, webform_nid, time, uid, session_id) VALUES(%d, %d, %d, %d, '%s')", array($test_nid, $webform_nid, time(), $user->uid, session_id()));
+              _webform_ab_check_for_win($test_nid);
             }
             break;
           }
@@ -900,6 +910,7 @@ function webform_ab_webform_submit($form, &$form_state) {
     foreach ($conversion_check_results as $val) {
       if ($val === TRUE) {
         db_query("INSERT INTO {webform_ab_conversion} (test_nid, webform_nid, sid) VALUES(%d, %d, %d)", array($form_state['values']['test_nid'], $form_state['values']['webform_nid'], $form_state['values']['details']['sid']));
+        break;
       }
     }
     
@@ -935,7 +946,13 @@ function _webform_ab_check_for_win($test_nid) {
   // If there is no winner yet, see if any webforms have reached the minimum_hits 
   // threshhold and ask other modules if any of those webforms has won
   if (!$winner_found) {
-    $node = node_load($test_nid);
+    /**
+     * Load the test node, and force a reload (so that it's not pulled from
+     * cache). When this is checked immediately after a conversion, the cached
+     * node in node_load() will be out of date by one conversion, which will
+     * cause the winner to be declared later.
+     */
+    $node = node_load($test_nid, NULL, TRUE);
     
     $winnable_webforms = array();
     foreach ($node->included_webforms as $webform_nid => $details) {
