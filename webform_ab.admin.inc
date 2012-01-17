@@ -113,7 +113,8 @@ function webform_ab_test_reports($node) {
       ($hit_counts[$webform_nid] > 0) ? round(100 * $conversion_counts[$webform_nid] / $hit_counts[$webform_nid]) . '%' : '0%',
     );
 
-    // If this webform is the winner, show pre- and post-win conversion percentages
+    // If this webform is the winner, show pre- and post-win conversion
+    // percentages
     if ($winning_webform_nid == $webform_nid) {
       $line[] = $post_win_hit_data['pre_win'];
       $line[] = $post_win_conversion_data['pre_win'];
@@ -255,7 +256,8 @@ function webform_ab_webform_list_add_submit($form, &$form_state) {
   // Only continue if they actually selected a webform
   if ($form_state['values']['add_form_id'] > 0) {
     // Make sure the chosen webform isn't already in the test
-    // It wouldn't have been an option if it was already in the test, but be on the safe side
+    // It wouldn't have been an option if it was already in the test, but be on
+    // the safe side
     $exists = db_query('SELECT COUNT(*) FROM {webform_ab_forms} WHERE test_nid = :test_nid AND webform_nid = :webform_nid', array(':test_nid' => array($form_state['values']['test_nid'], $form_state['values']['add_form_id'])))->fetchField() > 0;
 
     if (!$exists) {

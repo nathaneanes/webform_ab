@@ -25,9 +25,11 @@
 
 // Active status, for webforms within a test
 define('WEBFORM_AB_WEBFORM_STATUS_ACTIVE', 1);
-// Win status for webforms within a test - only one webform per test should have this
+// Win status for webforms within a test - only one webform per test should
+// have this
 define('WEBFORM_AB_WEBFORM_STATUS_WINNER', 2);
-// Retired status for webforms within a test - means that a different webform won the test
+// Retired status for webforms within a test - means that a different webform
+// won the test
 define('WEBFORM_AB_WEBFORM_STATUS_RETIRED', 3);
 
 /**
@@ -625,8 +627,8 @@ function webform_ab_delete(&$node) {
  * Implements hook_view().
  */
 function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
-  // If the current user has permission to modify this test, show them the overview
-  // page instead of directing them to one of the webforms in the test
+  // If the current user has permission to modify this test, show them the 
+  // overview page instead of directing them to one of the webforms in the test
   // If view_webform is set in the URL, don't show the overview
   if (node_access('update', $node) && $_GET['view_webform'] != 1) {
     $type = node_type_get_type($node);
@@ -801,17 +803,18 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
 
       // If this test has a winner, send them there
       if (($winner_webform_id = _webform_ab_has_winner_already($node)) > 0) {
-        // Save it to the $_SESSION so that it will be logged as a hit to the form
+        // Save it to the $_SESSION so that it will be logged as a hit to the
+        // form
         $_SESSION['webform_ab']['webform_for_tests'][$node->nid] = $winner_webform_id;
         drupal_goto('node/' . $winner_webform_id, array('query' => $query_vars));
       }
-      // See if they already have a webform nid in their $_SESSION for this test, and
-      // that it's still a valid webform nid for this test (in case the webform was
-      // removed from the test)
+      // See if they already have a webform nid in their $_SESSION for this
+      // test, and that it's still a valid webform nid for this test (in case
+      // the webform was removed from the test)
       else {
         if (empty($_SESSION['webform_ab']['webform_for_tests'][$node->nid]) || empty($node->included_webforms[$_SESSION['webform_ab']['webform_for_tests'][$node->nid]])) {
-          // See if this user has hit this test before, and use the same webform as
-          // the last time
+          // See if this user has hit this test before, and use the same
+          // webform as the last time
           global $user;
           if ($user->uid > 0) {
             $previous_test_hit = db_fetch_array(db_query("SELECT webform_nid FROM {webform_ab_hits} WHERE test_nid = :test_nid AND uid = :uid", array(':test_nid' => array($node->nid, $user->uid))));
@@ -915,8 +918,8 @@ function webform_ab_form_alter(&$form, $form_state, $form_id) {
             if (!empty($form_state['storage']) || !empty($form_state['post'])) {
               $log_hit = FALSE;
             }
-            // If repeat hits from a user should be ignore, check if this user has
-            // already hit the form
+            // If repeat hits from a user should be ignore, check if this user
+            // has already hit the form
             elseif (variable_get('webform_ab_ignore_repeat_hits', '1') > 0) {
               if ($user->uid > 0) {
                 $existing_hit = db_fetch_array(db_query("SELECT hit_id FROM {webform_ab_hits} WHERE test_nid = :test_nid AND webform_nid = :webform_nid AND uid = :uid", array(':test_nid' => array($test_nid, $webform_nid, $user->uid))));
@@ -931,7 +934,6 @@ function webform_ab_form_alter(&$form, $form_state, $form_id) {
 
             // If the hit should be logged, do so
             if ($log_hit) {
-              // TODO Please convert this statement to the D7 database API syntax.
               db_insert('webform_ab_hits')
                 ->fields(array(
                   'test_nid' => $test_nid,
@@ -963,12 +965,10 @@ function webform_ab_webform_submit($form, &$form_state) {
     $test_node = node_load($test_nid);
     $conversion_check_results = module_invoke_all('webform_ab_validate_conversion', $test_node->webform_types, $test_node, $form_state);
 
-    // Loop over the returned values from the hook and log a conversion if any of
-    // them returned TRUE
+    // Loop over the returned values from the hook and log a conversion if any
+    // of them returned TRUE
     foreach ($conversion_check_results as $val) {
       if ($val === TRUE) {
-        // TODO Please convert this statement to the D7 database API syntax.
-        /* db_query("INSERT INTO {webform_ab_conversion} () VALUES(%d, %d, %d)", array(, , )) */
         db_insert('webform_ab_conversion')
           ->fields(array(
             'test_nid' => $form_state['values']['test_nid'],
@@ -1006,11 +1006,13 @@ function webform_ab_webform_ab_validate_conversion($webform_types, $test_node, $
  * check for the basic Total Conversions and Conversion Percentage criteria
  */
 function _webform_ab_check_for_win($test_nid) {
-  // Check if there is already a winner, and gather a list of forms that have reached the minimum number of hits
+  // Check if there is already a winner, and gather a list of forms that have
+  // reached the minimum number of hits
   $winner_found = _webform_ab_has_winner_already($test_nid);
 
-  // If there is no winner yet, see if any webforms have reached the minimum_hits
-  // threshhold and ask other modules if any of those webforms has won
+  // If there is no winner yet, see if any webforms have reached the
+  // minimum_hits threshhold and ask other modules if any of those webforms has
+  // won
   if (!$winner_found) {
     /**
      * Load the test node, and force a reload (so that it's not pulled from
@@ -1035,14 +1037,17 @@ function _webform_ab_check_for_win($test_nid) {
     }
 
     if (count($winnable_webforms) > 0) {
-      // Call a hook to check for wins on all modules that define winning conditions
+      // Call a hook to check for wins on all modules that define winning
+      // conditions
       $winning_details = module_invoke_all('webform_ab_check_win_condition', $node->win_type, $winnable_webforms, $node);
 
-      // Return values of hook implementations are put into a flat array. Loop over and
-      // see if any of the returns is a webform nid. Modules that don't find a win will
-      // return 0, when they do find a win it will return the webform nid
+      // Return values of hook implementations are put into a flat array. Loop
+      // over and see if any of the returns is a webform nid. Modules that
+      // don't find a win will return 0, when they do find a win it will return
+      // the webform nid
       foreach ($winning_details as $webform_nid) {
-        // Double-check that the winning webform nid is in the included_webforms array
+        // Double-check that the winning webform nid is in the
+        // included_webforms array
         if ($node->included_webforms[$webform_nid]) {
           $winning_webform = $node->included_webforms[$webform_nid];
           // Log the win
