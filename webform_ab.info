@@ -1,6 +1,6 @@
 name = Webform A/B Testing
 description = "Adds a content type for an A/B test of webforms."
-core = 6.x
+core = 7.x
 package = Webform
 
 dependencies[] = webform

@@ -5,20 +5,6 @@
  */
 
 /**
- * Implements hook_install().
- */
-function webform_ab_install() {
-  drupal_install_schema('webform_ab');
-}
-
-/**
- * Implements hook_uninstall().
- */
-function webform_ab_uninstall() {
-  drupal_uninstall_schema('webform_ab');
-}
-
-/**
  * Implements hook_schema().
  */
 function webform_ab_schema() {
@@ -98,9 +84,9 @@ function webform_ab_schema() {
         'description' => 'Public teaser for the test.',
       ),
     ),
-    'primary key' => array('nid')
+    'primary key' => array('nid'),
   );
-  
+
 
   /**
    * Forms included in Webform A/B Test nodes
@@ -138,11 +124,11 @@ function webform_ab_schema() {
     'primary key' => array('test_nid', 'webform_nid'),
     'indexes' => array(
       'test_nid' => array('test_nid'),
-      'webform_nid' => array('webform_nid')
+      'webform_nid' => array('webform_nid'),
     ),
   );
-  
-  
+
+
   /**
    * Webform A/B Test hits table
    */
@@ -192,10 +178,10 @@ function webform_ab_schema() {
     'primary key' => array('hit_id'),
     'indexes' => array(
       'test_nid' => array('test_nid'),
-      'webform_nid' => array('webform_nid')
+      'webform_nid' => array('webform_nid'),
     ),
   );
-  
+
   /**
    * Webform A/B Test conversions
    */
@@ -227,41 +213,18 @@ function webform_ab_schema() {
     'primary key' => array('test_nid', 'webform_nid', 'sid'),
     'indexes' => array(
       'test_nid' => array('test_nid'),
-      'webform_nid' => array('webform_nid')
+      'webform_nid' => array('webform_nid'),
     ),
   );
-  
-  
+
+
   return $schema;
 }
 
 
 /**
- * Add webform hit uid and ip fields
+ * Implements hook_update_last_removed().
  */
-function webform_ab_update_6001() {
-  $updates = array();
-  db_add_field($updates, 'webform_ab_hits', 'uid', array('type' => 'int', 'length' => 11, 'not null' => TRUE, 'default' => 0));
-  db_add_field($updates, 'webform_ab_hits', 'ip', array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''));
-  return $updates;
-}
-
-/**
- * Switch ip to session_id in the webform_ab_hits table
- */
-function webform_ab_update_6002() {
-  $updates = array();
-  $updates[] = update_sql("ALTER TABLE `webform_ab_hits` CHANGE  `ip`  `session_id` VARCHAR( 255 ) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT  ''");
-  $updates[] = update_sql("UPDATE `webform_ab_hits` SET `session_id`=''");
-  return $updates;
-}
-
-
-/**
- * Add a teaser
- */
-function webform_ab_update_6003() {
-  $updates = array();
-  db_add_field($updates, 'webform_ab', 'public_teaser', array('type' => 'text', 'not null' => FALSE));
-  return $updates;
+function webform_ab_update_last_removed() {
+  return 6003;
 }
