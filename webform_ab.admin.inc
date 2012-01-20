@@ -67,7 +67,7 @@ function webform_ab_test_reports($node) {
       LEFT JOIN {webform_ab_hits} hits ON hits.test_nid = f.test_nid AND hits.webform_nid = f.webform_nid
       WHERE f.test_nid = :f.test_nid AND f.webform_nid = :f.webform_nid
       GROUP BY f.test_nid, f.webform_nid", array(':f.test_nid' => array($node->nid, $winning_webform_nid)));
-    $post_win_hit_data = db_fetch_array($result);
+    $post_win_hit_data = $result->fetchAssoc();
 
 
     // Get pre- and post-win conversions counts
@@ -77,7 +77,7 @@ function webform_ab_test_reports($node) {
       LEFT JOIN webform_submissions sub ON con.sid = sub.sid
       WHERE f.test_nid = :f.test_nid AND f.webform_nid = :f.webform_nid
       GROUP BY f.test_nid, f.webform_nid", array(':f.test_nid' => array($node->nid, $winning_webform_nid)));
-    $post_win_conversion_data = db_fetch_array($result);
+    $post_win_conversion_data = $result->fetchAssoc();
   }
 
   // Status labels
@@ -189,7 +189,7 @@ function webform_ab_test_webforms($node) {
   $return .= theme('table', array('header' => $headers, 'rows' => $rows));
 
   // Show a form to add more
-  $form = drupal_get_form('webform_ab_webform_list_add', $node);
+  $form = drupal_render(drupal_get_form('webform_ab_webform_list_add', $node));
   $return .= $form;
 
   return $return;
@@ -212,8 +212,8 @@ function webform_ab_webform_list_add($form, &$form_state, $node) {
   $indexed_forms = array();
   foreach ($flat_forms as $f) {
     // Don't add a webform in the list if it's already included in the test
-    if (!isset($node->included_webforms[$f['nid']])) {
-      $indexed_forms[$f['nid']] = $f['title'];
+    if (!isset($node->included_webforms[$f->nid])) {
+      $indexed_forms[$f->nid] = $f->title;
     }
   }
 
@@ -258,8 +258,10 @@ function webform_ab_webform_list_add_submit($form, &$form_state) {
     // Make sure the chosen webform isn't already in the test
     // It wouldn't have been an option if it was already in the test, but be on
     // the safe side
-    $exists = db_query('SELECT COUNT(*) FROM {webform_ab_forms} WHERE test_nid = :test_nid AND webform_nid = :webform_nid', array(':test_nid' => array($form_state['values']['test_nid'], $form_state['values']['add_form_id'])))->fetchField() > 0;
-
+    $exists = db_select('webform_ab_forms')
+      ->condition('test_nid', $form_state['values']['test_nid'])
+      ->condition('webform_nid', $form_state['values']['add_form_id'])
+      ->countQuery()->execute()->fetchField();
     if (!$exists) {
       db_insert('webform_ab_forms')
         ->fields(array(
@@ -278,8 +280,11 @@ function webform_ab_webform_list_add_submit($form, &$form_state) {
  */
 function webform_ab_test_remove_webform($node, $webform_nid) {
   // Make sure the webform they want to remove is actually in the test
-  $form_is_included = db_query('SELECT COUNT(*) FROM {webform_ab_forms} WHERE test_nid = :test_nid AND webform_nid = :webform_nid', array(':test_nid' => array($node->nid, $webform_nid)))->fetchField() > 0;
-
+  $form_is_included = db_select('webform_ab_forms')
+    ->condition('test_nid', $node->nid)
+    ->condition('webform_nid', $webform_nid)
+    ->countQuery()->execute()->fetchField();
+  
   if ($form_is_included) {
     // Show a confirmation form
     return drupal_get_form('webform_ab_test_remove_webform_confirm', $node->nid, $webform_nid);

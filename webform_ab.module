@@ -568,11 +568,16 @@ function _webform_ab_prep_node_for_save(&$node) {
  */
 function webform_ab_load(&$nodes) {
   foreach ($nodes as $nid => &$node) {
-    $load = db_query('SELECT * FROM {webform_ab} WHERE nid = :nid', array(':nid' => $nid))->fetchObject();
-    if (!empty($load->win_type)) {
-      $load->{$load->win_type} = $load->win_value;
+    // Load Webform A/B options for this node
+    $webform_options = db_query('SELECT * FROM {webform_ab} WHERE nid = :nid', array(':nid' => $nid))->fetchAssoc();
+    if (!empty($webform_options['win_type'])) {
+      $node->{$webform_options['win_type']} = $webform_options['win_value'];
+      $node->win_type = $webform_options['win_type'];
     }
+    unset($webform_options['win_type']);
+    unset($webform_options['win_value']);
 
+    // Load the included webforms
     $result = db_query('SELECT f.webform_nid, f.status, n.title, COUNT(DISTINCT hits.hit_id) as hits, COUNT(DISTINCT con.sid) AS conversions
       FROM {webform_ab_forms} f
       LEFT JOIN {node} n ON n.nid = f.webform_nid
@@ -582,13 +587,13 @@ function webform_ab_load(&$nodes) {
       GROUP BY f.test_nid, f.webform_nid
       ORDER BY f.status, n.title', array(':test_nid' => $nid));
     $included_webforms = array();
-    foreach ($result as $row) {
+    while($row = $result->fetchAssoc()) {
       $included_webforms[$row['webform_nid']] = $row;
     }
 
-    $load->included_webforms = $included_webforms;
+    $node->included_webforms = $included_webforms;
 
-    foreach ($load as $property => &$value) {
+    foreach ($webform_options as $property => $value) {
       $node->$property = $value;
     }
   }
@@ -704,11 +709,13 @@ function webform_ab_view(&$node, $view_mode) {
       '#weight' => 1,
     );
 
-    if ($node->win_type == 'percent_conversions') {
-      $win_value = $node->{$node->win_type} . '%';
-    }
-    else {
-      $win_value = $node->{$node->win_type};
+    if ($node->win_type) {
+      if ($node->win_type == 'percent_conversions') {
+        $win_value = $node->{$node->win_type} . '%';
+      }
+      elseif (isset($node->{$node->win_type})) {
+        $win_value = $node->{$node->win_type};
+      }
     }
     $node->content['winning_conditions']['win_value'] = array(
       '#type' => 'item',
@@ -781,9 +788,8 @@ function webform_ab_view(&$node, $view_mode) {
   elseif (!empty($node->included_webforms)) {
     // If showing a teaser, don't redirect to the other form
     if ($view_mode == 'teaser') {
-      $node = node_prepare($node, $teaser);
       $node->content['public_teaser'] = array(
-        '#value' => $node->public_teaser,
+        '#markup' => $node->public_teaser,
       );
       return $node;
     }
@@ -809,7 +815,7 @@ function webform_ab_view(&$node, $view_mode) {
           // webform as the last time
           global $user;
           if ($user->uid > 0) {
-            $previous_test_hit = db_fetch_array(db_query("SELECT webform_nid FROM {webform_ab_hits} WHERE test_nid = :test_nid AND uid = :uid", array(':test_nid' => array($node->nid, $user->uid))));
+            $previous_test_hit = db_query("SELECT webform_nid FROM {webform_ab_hits} WHERE test_nid = :test_nid AND uid = :uid", array(':test_nid' => array($node->nid, $user->uid)))->fetchAssoc();
             if ($previous_test_hit['webform_nid'] > 0) {
               $webform_nid_to_view = $previous_test_hit['webform_nid'];
             }
@@ -870,10 +876,21 @@ function _webform_ab_has_winner_already($node_or_nid) {
  */
 function webform_ab_webform_ab_valid_webforms($webform_types) {
   if ($webform_types == 'webform') {
-    $result = db_query("SELECT nid, title FROM {node} WHERE status > :status AND type = :type ORDER BY title", array(':status' => 0, ':type' => array('webform')));
     $forms = array();
-    foreach ($result as $row) {
-      $forms[] = $row;
+    $webform_node_types = webform_variable_get('webform_node_types');
+    if (!empty($webform_node_types)) {
+      $result = db_select('node', 'n')
+        ->fields('n', array(
+          'nid',
+          'title',
+        ))
+        ->condition('status', 1)
+        ->condition('type', $webform_node_types, 'IN')
+        ->orderBy('title')
+        ->execute();
+        foreach ($result as $row) {
+          $forms[] = $row;
+        }
     }
     return $forms;
   }
@@ -912,11 +929,23 @@ function webform_ab_form_alter(&$form, $form_state, $form_id) {
             // If repeat hits from a user should be ignore, check if this user
             // has already hit the form
             elseif (variable_get('webform_ab_ignore_repeat_hits', '1') > 0) {
+              // If user is logged in, check for hit from that user
               if ($user->uid > 0) {
-                $existing_hit = db_fetch_array(db_query("SELECT hit_id FROM {webform_ab_hits} WHERE test_nid = :test_nid AND webform_nid = :webform_nid AND uid = :uid", array(':test_nid' => array($test_nid, $webform_nid, $user->uid))));
+                $existing_hit = db_select('webform_ab_hits', 'h')
+                  ->fields('h', array('hit_id'))
+                  ->condition('test_nid', $test_nid)
+                  ->condition('webform_nid', $webform_nid)
+                  ->condition('uid', $user->uid)
+                  ->execute()->fetchAssoc();
               }
               else {
-                $existing_hit = db_fetch_array(db_query("SELECT hit_id FROM {webform_ab_hits} WHERE test_nid = :test_nid AND webform_nid = :webform_nid AND session_id = :session_id", array(':test_nid' => array($test_nid, $webform_nid, session_id()))));
+                // Not logged in, so check using the session ID
+                $existing_hit = db_select('webform_ab_hits', 'h')
+                  ->fields('h', array('hit_id'))
+                  ->condition('test_nid', $test_nid)
+                  ->condition('webform_nid', $webform_nid)
+                  ->condition('session_id', session_id())
+                  ->execute()->fetchAssoc();
               }
               if ($existing_hit['hit_id'] > 0) {
                 $log_hit = FALSE;
