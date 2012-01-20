@@ -105,6 +105,14 @@ function webform_ab_test_reports($node) {
 
   // Loop over the webforms and add a row to the report table
   foreach ($node->included_webforms as $webform_nid => $webform_details) {
+    // Make sure count vars are prepped, to prevent Undefined Index notices
+    if (!isset($hit_counts[$webform_nid])) {
+      $hit_counts[$webform_nid] = 0;
+    }
+    if (!isset($conversion_counts[$webform_nid])) {
+      $conversion_counts[$webform_nid] = 0;
+    }
+    
     $line = array(
       $webform_ab_status_labels[$webform_details['status']],
       $webform_details['title'],
