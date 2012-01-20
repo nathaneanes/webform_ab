@@ -42,7 +42,6 @@ function webform_ab_node_info() {
       'base' => 'webform_ab',
       'description' => t('An A/B test for Webforms'),
       'title_label' => t('Test Name'),
-      'body_label' => t('Admin Description'),
       'locked' => TRUE,
     ),
   );
@@ -147,7 +146,7 @@ function webform_ab_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['admin/config/webform_ab'] = array(
+  $items['admin/config/content/webform_ab'] = array(
     'title' => 'Webform A/B Test Settings',
     'description' => 'Settings for Webform A/B Tests',
     'page callback' => 'drupal_get_form',
@@ -237,10 +236,10 @@ function webform_ab_form(&$node, $form_state) {
     '#default_value' => $node->title,
   );
 
-  $form['test_settings']['body'] = array(
+  $form['test_settings']['admin_description'] = array(
     '#type' => 'textarea',
-    '#title' => check_plain($type->body_label),
-    '#default_value' => $node->body,
+    '#title' => t('Admin Description'),
+    '#default_value' => $node->admin_description,
     '#cols' => 60,
     '#rows' => 5,
     '#description' => t('Description for admin use. This is not displayed to the public.'),
@@ -260,7 +259,7 @@ function webform_ab_form(&$node, $form_state) {
     '#title' => t('Which types of webforms will this test use?'),
     '#description' => t('Once set, this cannot be changed.'),
     '#options' => module_invoke_all('webform_ab_get_webform_types'),
-    '#default_value' => $node->webform_types,
+    '#default_value' => empty($node->webform_types) ? 'webform' : $node->webform_types,
     '#required' => TRUE,
   );
 
@@ -444,9 +443,12 @@ function webform_ab_validate($node, &$form) {
         // See if the string ends with a percentage
         elseif (substr($win_value, -1) == '%') {
           // Strip the percent sign
-          $number = substr($win_value, 0, strlen($win_value) - 1);
+          $number = (float)$win_value;
           if (!($number > 0 && $number <= 100)) {
             form_set_error($node->win_type, t('Please enter a valid percentage for %criteria. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).', array('%criteria' => $field_title)));
+          }
+          else {
+            $node->{$node->win_type} = $number;
           }
         }
         // Otherise, failed
@@ -504,14 +506,13 @@ function webform_ab_insert($node) {
  * Update existing or insert new Webform A/B Test nodes
  */
 function webform_ab_update($node, $is_insert = FALSE) {
-  return;
   _webform_ab_prep_node_for_save($node);
 
   if ($is_insert) {
     $query = db_insert('webform_ab');
   }
   else {
-    $query = db_update('webform_ab')->condition('nid', $replacement_values['10']);
+    $query = db_update('webform_ab')->condition('nid', $node->nid);
   }
 
   $query->fields(array(
@@ -519,11 +520,12 @@ function webform_ab_update($node, $is_insert = FALSE) {
     'webform_types' => $node->webform_types,
     'minimum_hits' => $node->minimum_hits,
     'win_type' => $node->win_type,
-    'win_value' => $node->{$node->win_type},
+    'win_value' => (float)$node->{$node->win_type},
     'daily_notification_email' => $node->daily_notification_email,
     'daily_notification_sms' => $node->daily_notification_sms,
     'win_notification_email' => $node->win_notification_email,
     'win_notification_sms' => $node->win_notification_sms,
+    'admin_description' =>  $node->admin_description,
     'public_teaser' =>  $node->public_teaser,
   ))
   ->execute();
@@ -565,15 +567,8 @@ function _webform_ab_prep_node_for_save(&$node) {
  * Implements hook_load().
  */
 function webform_ab_load(&$nodes) {
-  return;
-  $result = db_query('SELECT * FROM {webform_ab} WHERE nid IN (:nids)', array(':nids' => array_keys($nodes)));
-  $node_info = array();
-  foreach ($result as $row) {
-    $node_info[$row->nid] = $row;
-  }
-  
-  foreach ($nodes as $nid => $node) {
-    $load = db_fetch_object(db_query('SELECT * FROM {webform_ab} WHERE nid = :nid', array(':nid' => $node->nid)));
+  foreach ($nodes as $nid => &$node) {
+    $load = db_query('SELECT * FROM {webform_ab} WHERE nid = :nid', array(':nid' => $nid))->fetchObject();
     if (!empty($load->win_type)) {
       $load->{$load->win_type} = $load->win_value;
     }
@@ -583,9 +578,9 @@ function webform_ab_load(&$nodes) {
       LEFT JOIN {node} n ON n.nid = f.webform_nid
       LEFT JOIN {webform_ab_hits} hits ON hits.test_nid = f.test_nid AND hits.webform_nid = f.webform_nid
       LEFT JOIN  {webform_ab_conversion} con ON con.test_nid = f.test_nid AND con.webform_nid = f.webform_nid
-      WHERE f.test_nid = :f.test_nid
+      WHERE f.test_nid = :test_nid
       GROUP BY f.test_nid, f.webform_nid
-      ORDER BY f.status, n.title', array(':f.test_nid' => $node->nid));
+      ORDER BY f.status, n.title', array(':test_nid' => $nid));
     $included_webforms = array();
     foreach ($result as $row) {
       $included_webforms[$row['webform_nid']] = $row;
@@ -626,7 +621,7 @@ function webform_ab_delete(&$node) {
 /**
  * Implements hook_view().
  */
-function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
+function webform_ab_view(&$node, $view_mode) {
   // If the current user has permission to modify this test, show them the 
   // overview page instead of directing them to one of the webforms in the test
   // If view_webform is set in the URL, don't show the overview
@@ -634,14 +629,14 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     $type = node_type_get_type($node);
 
     $node->content['description'] = array(
-      '#value' => "This is the admin overview of the A/B Test. If an unpriveleged or anonymous user visits this same URL, they will be redirected to one of the webforms within the test.",
+      '#markup' => "This is the admin overview of the A/B Test. If an unpriveleged or anonymous user visits this same URL, they will be redirected to one of the webforms within the test.",
       '#weight' => -10,
       '#prefix' => '<p>',
       '#suffix' => '</p>',
     );
 
     $node->content['view_link'] = array(
-      '#value' => l('View the test as a regular user would', $_GET['q'], array('query' => array('view_webform' => 1), 'absolute' => TRUE)),
+      '#markup' => l('View the test as a regular user would', $_GET['q'], array('query' => array('view_webform' => 1), 'absolute' => TRUE)),
       '#weight' => -9,
       '#prefix' => '<p>',
       '#suffix' => '</p>',
@@ -658,21 +653,21 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     $node->content['test_settings']['title'] = array(
       '#type' => 'item',
       '#title' => check_plain($type->title_label),
-      '#value' => $node->title,
+      '#markup' => $node->title,
       '#weight' => 0,
     );
 
-    $node->content['test_settings']['body'] = array(
+    $node->content['test_settings']['admin_description'] = array(
       '#type' => 'item',
-      '#title' => check_plain($type->body_label),
-      '#value' => $node->body,
+      '#title' => t('Admin Description'),
+      '#markup' => $node->admin_description,
       '#weight' => 1,
     );
 
     $node->content['test_settings']['public_teaser'] = array(
       '#type' => 'item',
       '#title' => t('Public Teaser'),
-      '#value' => $node->public_teaser,
+      '#markup' => $node->public_teaser,
       '#weight' => 1,
     );
 
@@ -681,7 +676,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     $node->content['test_settings']['webform_types'] = array(
       '#type' => 'item',
       '#title' => t('Which types of webforms will this test use?'),
-      '#value' => $webform_types[$node->webform_types],
+      '#markup' => $webform_types[$node->webform_types],
       '#weight' => 2,
     );
 
@@ -697,7 +692,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     $node->content['winning_conditions']['minimum_hits'] = array(
       '#type' => 'item',
       '#title' => t('Minimum Hits'),
-      '#value' => $node->minimum_hits,
+      '#markup' => $node->minimum_hits,
       '#weight' => 0,
     );
 
@@ -705,7 +700,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     $node->content['winning_conditions']['win_type'] = array(
       '#type' => 'item',
       '#title' => t('Win Criteria'),
-      '#value' => $win_conditions[$node->win_type],
+      '#markup' => $win_conditions[$node->win_type],
       '#weight' => 1,
     );
 
@@ -718,7 +713,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     $node->content['winning_conditions']['win_value'] = array(
       '#type' => 'item',
       '#title' => t('Win Value'),
-      '#value' => $win_value,
+      '#markup' => $win_value,
       '#weight' => 2,
     );
 
@@ -743,14 +738,14 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
      $node->content['notifications']['daily_summaries']['daily_notification_email'] = array(
      '#type' => 'item',
      '#title' => t('Send daily reports by email to'),
-     '#value' => $node->daily_notification_email,
+     '#markup' => $node->daily_notification_email,
      '#weight' => 1,
      );
 
      $node->content['notifications']['daily_summaries']['daily_notification_sms'] = array(
      '#type' => 'item',
      '#title' => t('Send daily reports by SMS to'),
-     '#value' => $node->daily_notification_sms,
+     '#markup' => $node->daily_notification_sms,
      '#weight' => 2,
      );
 
@@ -766,14 +761,14 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
      $node->content['notifications']['winning_notice']['win_notification_email'] = array(
      '#type' => 'item',
      '#title' => t('Send winning notice by email to'),
-     '#value' => $node->win_notification_email,
+     '#markup' => $node->win_notification_email,
      '#weight' => 4,
      );
 
      $node->content['notifications']['winning_notice']['win_notification_sms'] = array(
      '#type' => 'item',
      '#title' => t('Send winning notice by SMS to'),
-     '#value' => $node->win_notification_sms,
+     '#markup' => $node->win_notification_sms,
      '#weight' => 5,
      );
      */
@@ -785,21 +780,18 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
   // the full node view (not teaser)
   elseif (!empty($node->included_webforms)) {
     // If showing a teaser, don't redirect to the other form
-    if ($teaser) {
+    if ($view_mode == 'teaser') {
       $node = node_prepare($node, $teaser);
-      // Don't show the body field - it's the admin description
-      unset($node->content['body']);
       $node->content['public_teaser'] = array(
         '#value' => $node->public_teaser,
       );
       return $node;
     }
     // Full node view: redirect to one of the included webforms
-    else {
+    elseif ($view_mode == 'full') {
       // Pick query variables to pass along
       $query_vars = $_GET;
       unset($query_vars['q']);
-
 
       // If this test has a winner, send them there
       if (($winner_webform_id = _webform_ab_has_winner_already($node)) > 0) {
@@ -838,9 +830,8 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     }
   }
   else {
-    $node = node_prepare($node, $teaser);
     $node->content['no_webforms'] = array(
-      '#value' => t('There are no webforms in this A/B test.'),
+      '#markup' => t('There are no webforms in this A/B test.'),
     );
     return $node;
   }
@@ -1193,3 +1184,4 @@ if (!function_exists('trim_byref')) {
     $string = trim($string);
   }
 }
+

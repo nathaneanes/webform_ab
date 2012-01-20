@@ -78,6 +78,11 @@ function webform_ab_schema() {
         'default' => '',
         'not null' => FALSE,
       ),
+      'admin_description' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'description' => 'Admin description for the test.',
+      ),
       'public_teaser' => array(
         'type' => 'text',
         'not null' => FALSE,
