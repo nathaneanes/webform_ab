@@ -191,7 +191,11 @@ function webform_ab_menuitem_load($nid) {
  * Implements hook_node_access().
  */
 function webform_ab_node_access($node, $op, $account) {
-  $is_author = $account->uid == $node->uid;
+  $is_author = FALSE;
+  
+  if (is_object($account) && is_object($node)) {
+    $is_author = $account->uid == $node->uid;
+  }
 
   switch ($op) {
     case 'create':
@@ -311,7 +315,7 @@ function webform_ab_form(&$node, $form_state) {
     '#description' => t('Number of conversions'),
     '#size' => 40,
     '#maxlength' => 255,
-    '#default_value' => $node->total_conversions,
+    '#default_value' => isset($node->total_conversions) ? $node->total_conversions : '',
   );
 
   $form['winning_conditions']['win_type']['percent_conversions_group'] = array(
@@ -334,7 +338,7 @@ function webform_ab_form(&$node, $form_state) {
     '#description' => t('Percentage of hits that become conversions. Enter either as 25% or 0.25.'),
     '#size' => 10,
     '#maxlength' => 255,
-    '#default_value' => ($node->percent_conversions) ? ($node->percent_conversions . '%') : '',
+    '#default_value' => isset($node->percent_conversions) ? ($node->percent_conversions . '%') : '',
   );
 
 
@@ -630,7 +634,7 @@ function webform_ab_view(&$node, $view_mode) {
   // If the current user has permission to modify this test, show them the 
   // overview page instead of directing them to one of the webforms in the test
   // If view_webform is set in the URL, don't show the overview
-  if (node_access('update', $node) && $_GET['view_webform'] != 1) {
+  if (node_access('update', $node) && (!isset($_GET['view_webform']) || $_GET['view_webform'] != 1)) {
     $type = node_type_get_type($node);
 
     $node->content['description'] = array(
@@ -1068,7 +1072,7 @@ function _webform_ab_check_for_win($test_nid) {
       foreach ($winning_details as $webform_nid) {
         // Double-check that the winning webform nid is in the
         // included_webforms array
-        if ($node->included_webforms[$webform_nid]) {
+        if (isset($node->included_webforms[$webform_nid])) {
           $winning_webform = $node->included_webforms[$webform_nid];
           // Log the win
           watchdog('webform_ab', "Winner declared in A/B test %testname: %winner", array('%testname' => $winning_webform['title'], '%winner' => $node->title), WATCHDOG_NOTICE);
@@ -1089,7 +1093,7 @@ function _webform_ab_check_for_win($test_nid) {
               'win_time' => 0,
             ))
             ->condition('test_nid', $node->nid)
-            ->condition('webform_nid', $webform_nid)
+            ->condition('webform_nid', $webform_nid, '<>')
             ->execute();
 
           // @todo Send email and SMS notices

@@ -65,8 +65,8 @@ function webform_ab_test_reports($node) {
     $result = db_query("SELECT SUM(IF(hits.time > f.win_time, 1, 0)) AS post_win, SUM(IF(hits.time <= f.win_time, 1, 0)) AS pre_win
       FROM {webform_ab_forms} f
       LEFT JOIN {webform_ab_hits} hits ON hits.test_nid = f.test_nid AND hits.webform_nid = f.webform_nid
-      WHERE f.test_nid = :f.test_nid AND f.webform_nid = :f.webform_nid
-      GROUP BY f.test_nid, f.webform_nid", array(':f.test_nid' => array($node->nid, $winning_webform_nid)));
+      WHERE f.test_nid = :test_nid AND f.webform_nid = :webform_nid
+      GROUP BY f.test_nid, f.webform_nid", array(':test_nid' => $node->nid, ':webform_nid' => $winning_webform_nid));
     $post_win_hit_data = $result->fetchAssoc();
 
 
@@ -75,8 +75,8 @@ function webform_ab_test_reports($node) {
       FROM webform_ab_forms f
       LEFT JOIN webform_ab_conversion con ON con.test_nid = f.test_nid AND con.webform_nid = f.webform_nid
       LEFT JOIN webform_submissions sub ON con.sid = sub.sid
-      WHERE f.test_nid = :f.test_nid AND f.webform_nid = :f.webform_nid
-      GROUP BY f.test_nid, f.webform_nid", array(':f.test_nid' => array($node->nid, $winning_webform_nid)));
+      WHERE f.test_nid = :test_nid AND f.webform_nid = :webform_nid
+      GROUP BY f.test_nid, f.webform_nid", array(':test_nid' => $node->nid, ':webform_nid' => $winning_webform_nid));
     $post_win_conversion_data = $result->fetchAssoc();
   }
 
