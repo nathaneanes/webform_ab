@@ -243,7 +243,7 @@ function webform_ab_form(&$node, $form_state) {
   $form['test_settings']['admin_description'] = array(
     '#type' => 'textarea',
     '#title' => t('Admin Description'),
-    '#default_value' => $node->admin_description,
+    '#default_value' => isset($node->admin_description) ? $node->admin_description : '',
     '#cols' => 60,
     '#rows' => 5,
     '#description' => t('Description for admin use. This is not displayed to the public.'),
@@ -252,7 +252,7 @@ function webform_ab_form(&$node, $form_state) {
   $form['test_settings']['public_teaser'] = array(
     '#type' => 'textarea',
     '#title' => t('Public Teaser'),
-    '#default_value' => $node->public_teaser,
+    '#default_value' => isset($node->public_teaser) ? $node->public_teaser : '',
     '#cols' => 60,
     '#rows' => 5,
     '#description' => t('Teaser for public use. This is is shown if this Webform A/B Test node is shown in a list of nodes where only the teaser is displayed. This might be a description like, "Donate to our orgnization."'),
@@ -306,7 +306,7 @@ function webform_ab_form(&$node, $form_state) {
     '#description' => t('This many conversions must be made by a webform before it is declared the winner.'),
     '#return_value' => 'total_conversions',
     '#parents' => array('win_type'),
-    '#default_value' => $node->win_type,
+    '#default_value' => isset($node->win_type) ? $node->win_type : '',
   );
 
   $form['winning_conditions']['win_type']['total_conversions_group']['total_conversions'] = array(
@@ -329,7 +329,7 @@ function webform_ab_form(&$node, $form_state) {
     '#description' => t('A webform must reach this percentage of conversions to be declared the winner.'),
     '#return_value' => 'percent_conversions',
     '#parents' => array('win_type'),
-    '#default_value' => $node->win_type,
+    '#default_value' => isset($node->win_type) ? $node->win_type : '',
   );
 
   $form['winning_conditions']['win_type']['percent_conversions_group']['percent_conversions'] = array(
