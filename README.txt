@@ -75,7 +75,7 @@ Test Settings
 The Webform A/B Test Settings form is found under Administer > Site Configuration. Here, admins can configure some basic settings that affect all A/B Tests.
 
 * Roles to ignore hits from: Typically, hits from admins should not be counted to determine a winning form, since they are likely just testing it out.
-* IPs to irngore hits from: This allows more generic blocking of hits from administrators. By adding an admin's IP to this list, you can ensure that hits and conversions from that person will not be logged even if they log out of Drupal to try out the Test as an anonymous user.
+* IPs to ignore hits from: This allows more generic blocking of hits from administrators. By adding an admin's IP to this list, you can ensure that hits and conversions from that person will not be logged even if they log out of Drupal to try out the Test as an anonymous user.
 * Log only one hit per user per form: By default, the module will only log one hit per user for each form that they hit (for authenticated users, it's based on their user ID. For anonymous users, it's based on their IP). This prevents the hit count from being artificially inflated if someone is refreshing the page or something like that. When this option is disabled, ALL webform hits will be logged. This can be useful for testing the configuration of a Test. Typically, one should then re-enable this feature and reset the Test data before publishing it.
 
 
