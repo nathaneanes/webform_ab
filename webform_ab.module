@@ -736,11 +736,12 @@ function webform_ab_webform_ab_validate_conversion($webform_types, $test_node, $
 
 /**
  * Check if the given A/B Test has a winning webform
- * This function checks to see if a webform has already been declared the winner.
- * If not, it invokes hook_webform_ab_check_win_condition() so that other modules
- * can check their winning conditions, if chosen.
- * This module also implements hook_webform_ab_check_win_condition() below, to
- * check for the basic Total Conversions and Conversion Percentage criteria
+ * 
+ * This function checks to see if a webform has already been declared the
+ * winner.
+ * 
+ * If not, it calls the win check function on each win condition plugin that's
+ * in use on this A/B Test
  */
 function _webform_ab_check_for_win($test_nid) {
   // Check if there is already a winner, and gather a list of forms that have
@@ -759,74 +760,50 @@ function _webform_ab_check_for_win($test_nid) {
      */
     $node = node_load($test_nid, NULL, TRUE);
     
-    $winnable_webforms = array();
-    foreach ($node->included_webforms as $webform_nid => $details) {
-      // Check if this webform was already declared the winner
-      if ($details['status'] == WEBFORM_AB_WEBFORM_STATUS_WINNER) {
-        $winner_found = TRUE;
-        break;
-      }
-    }
-    
-    if (count($winnable_webforms) > 0) {
-      // Call a hook to check for wins on all modules that define winning conditions
-      $winning_details = module_invoke_all('webform_ab_check_win_condition', $node->win_type, $winnable_webforms, $node);
+    $win_conditions = _webform_ab_get_win_condition_plugins();
 
-      // Return values of hook implementations are put into a flat array. Loop
-      // over and see if any of the returns is a webform nid. Modules that
-      // don't find a win will return 0, when they do find a win it will return
-      // the webform nid
-      foreach ($winning_details as $webform_nid) {
-        // Double-check that the winning webform nid is in the
-        // included_webforms array
-        if ($node->included_webforms[$webform_nid]) {
-          $winning_webform = $node->included_webforms[$webform_nid];
-          // Log the win
-          watchdog('webform_ab', "Winner declared in A/B test %testname: %winner", array('%testname' => $winning_webform['title'], '%winner' => $node->title), WATCHDOG_NOTICE);
-          // Save the winning webform to the DB
-          db_query("UPDATE {webform_ab_forms} SET status = %d, win_time = %d WHERE test_nid = %d AND webform_nid = %d", array(WEBFORM_AB_WEBFORM_STATUS_WINNER, time(), $node->nid, $webform_nid));
-          // Update the status on the other forms to be retired
-          db_query("UPDATE {webform_ab_forms} SET status = %d, win_time = %d WHERE test_nid = %d AND webform_nid != %d", array(WEBFORM_AB_WEBFORM_STATUS_RETIRED, 0, $node->nid, $webform_nid));
-        
-          // @todo Send email and SMS notices
+    // Check each included webform
+    foreach ($node->included_webforms as $webform_nid => $details) {
+      // Check each condition on each webform
+      foreach ($win_conditions as $plugin_key => $plugin) {
+        if($win_check = ctools_plugin_get_function($plugin, 'check win criteria')) {
+          // Run the win check on this win condition
+          if(!$win_check()) {
+            // Did NOT pass this conditon, so don't bother checking the rest
+            dsm($webform_nid, 'fail ' . $plugin_key);
+            continue 2;
+          }
+          else {
+            dsm($webform_nid, 'pass ' . $plugin_key);
+          }
         }
       }
+      
+      // If processing gets this far, the form passed all win checks. Save this
+      // form as the winner, log the win, etc.
+      _webform_ab_process_winner($node, $details);
     }
   }
 }
 
 
 /**
- * Implementation of hook_webform_ab_check_win_condition().
- * Check which win criteria is being used by the given A/B Test. If it's one of
- * the ones defined by this module, see if any of the webforms in the test have
- * won.
+ * Process a test-winning form
+ * 
+ * @param $test_node
+ *   Webform A/B test node
+ * @param $webform_node_details
+ *   Array with details about the winning webform
  */
-function webform_ab_webform_ab_check_win_condition($win_type, $webforms_to_check, $node) {
-  switch ($win_type) {
-    case 'total_conversions':
-      // Loop over each included webform and check the conversion count
-      foreach ($webforms_to_check as $webform_nid => $webform_details) {
-        if ($webform_details['conversions'] >= $node->total_conversions) {
-          // Win!
-          return $webform_nid;
-          break;
-        }
-      }
-      break;
-    
-    case 'percent_conversions':
-      // Loop over each included webform and check the conversion percentage
-      foreach ($webforms_to_check as $webform_nid => $webform_details) {
-        if (100 * ($webform_details['conversions'] / $webform_details['hits']) > $node->percent_conversions) {
-          // Win!
-          return $webform_nid;
-          break;          
-        }
-      }
-      break;
-  }
-  return 0;
+function _webform_ab_process_winner($test_node, $webform_node_details) {
+  // Log the win
+  watchdog('webform_ab', "Winner declared in A/B test %testname: %winner", array('%testname' => $test_node->title, '%winner' => $webform_node_details['title']), WATCHDOG_NOTICE);
+      
+  // Save the winning webform to the DB
+  db_query("UPDATE {webform_ab_forms} SET status = %d, win_time = %d WHERE test_nid = %d AND webform_nid = %d", array(WEBFORM_AB_WEBFORM_STATUS_WINNER, time(), $test_node->nid, $webform_node_details['nid']));
+      
+  // Update the status on the other forms to be retired
+  db_query("UPDATE {webform_ab_forms} SET status = %d, win_time = %d WHERE test_nid = %d AND webform_nid != %d", array(WEBFORM_AB_WEBFORM_STATUS_RETIRED, 0, $test_node->nid, $webform_node_details['nid']));
 }
 
 
