@@ -231,7 +231,7 @@ function webform_ab_form(&$node, $form_state) {
     '#required' => TRUE,
   );
   
-  $form['winning_conditions'] = array(
+  $form['win_conditions'] = array(
     '#type' => 'fieldset',
     '#title' => t('Winning Conditions'),
     '#description' => t('Conditions necessary for a form to win the test.'),
@@ -245,7 +245,7 @@ function webform_ab_form(&$node, $form_state) {
 
   foreach ($win_conditions as $plugin_key => $plugin) {
     // Add a checkbox to enable this win condition
-    $form['winning_conditions'][$plugin_key]['enable'] = array(
+    $form['win_conditions'][$plugin_key]['enable'] = array(
       '#type' => 'checkbox',
       '#title' => $plugin['title'],
     );
@@ -255,13 +255,13 @@ function webform_ab_form(&$node, $form_state) {
       // Decide on an ID for the fieldset wrapping the config options
       // CTools JS seems to make assumptions about what this should be, so
       // don't change it
-      $options_div_id = str_replace('_', '-', 'edit-winning-conditions-' . $plugin_key . '-options');
+      $options_div_id = str_replace('_', '-', 'edit-win-conditions-' . $plugin_key . '-options');
       // Determine the selector for the Enable checkbox
-      $enable_checkbox_id = str_replace('_', '-', 'edit-winning-conditions-' . $plugin_key . '-enable');
+      $enable_checkbox_id = str_replace('_', '-', 'edit-win-conditions-' . $plugin_key . '-enable');
       
       // Create a fieldset for the config options and make it dependent on the
       // Enable checkbox for this win condition
-      $form['winning_conditions'][$plugin_key]['options'] = array(
+      $form['win_conditions'][$plugin_key]['options'] = array(
         '#type' => 'fieldset',
         '#title' => $plugin['title'] . ' ' . t('Options'),
         '#collapsible' => FALSE,
@@ -280,7 +280,7 @@ function webform_ab_form(&$node, $form_state) {
       
       // Get the config form fields and merge them into the fieldset
       $config_form = $config_form_function();
-      $form['winning_conditions'][$plugin_key]['options'] = array_merge($form['winning_conditions'][$plugin_key]['options'], $config_form);
+      $form['win_conditions'][$plugin_key]['options'] = array_merge($form['win_conditions'][$plugin_key]['options'], $config_form);
     }
   }
   
@@ -296,8 +296,8 @@ function webform_ab_validate($node, &$form) {
   // Validate the winning conditions
   // First: make sure at least one is selected
   $has_win_condition = FALSE;
-  if (is_array($node->winning_conditions)) {
-    foreach ($node->winning_conditions as $plugin_key => $config) {
+  if (is_array($node->win_conditions)) {
+    foreach ($node->win_conditions as $plugin_key => $config) {
       // If this win condition is enabled, check if the plugin provides a
       // validation method that should be called
       if ($config['enable'] > 0) {
@@ -306,7 +306,7 @@ function webform_ab_validate($node, &$form) {
         if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
           // Call the validate function. Pass in a field name prefix for use by
           // form_set_error in the validation function
-          $field_name_prefix = 'winning_conditions][' . $plugin_key . '][options][';
+          $field_name_prefix = 'win_conditions][' . $plugin_key . '][options][';
           $config_validation_function($config['options'], $field_name_prefix);
         }
       }
@@ -315,7 +315,7 @@ function webform_ab_validate($node, &$form) {
   
   // Throw an error if they don't have ANY winning condition chosen
   if (!$has_win_condition) {
-    form_set_error('winning_conditions', t('Please select at least one winning condition for the test.'));
+    form_set_error('win_conditions', t('Please select at least one winning condition for the test.'));
   }
 }
 
@@ -359,9 +359,9 @@ function webform_ab_update($node, $is_insert = FALSE) {
   // Save win condition info
   // Remove old records first
   db_query('DELETE FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
-  // $node->winning_conditions has been prepped for saving already in
+  // $node->win_conditions has been prepped for saving already in
   // _webform_ab_prep_node_for_save()
-  foreach ($node->winning_conditions as $plugin_key => $config) {
+  foreach ($node->win_conditions as $plugin_key => $config) {
     $row = array(
       'test_nid' => $node->nid,
       'plugin_key' => $plugin_key,
@@ -396,13 +396,13 @@ function _webform_ab_prep_node_for_save(&$node) {
     $node->win_notification_email = implode(',', $fixed);
   }
   
-  if (!is_array($node->winning_conditions)) {
-    $node->winning_conditions = array();
+  if (!is_array($node->win_conditions)) {
+    $node->win_conditions = array();
   }
-  foreach ($node->winning_conditions as $plugin_key => $config) {
+  foreach ($node->win_conditions as $plugin_key => $config) {
     // If this win condition is NOT enabled, remove it from the array
     if (!($config['enable'] > 0)) {
-      unset($node->winning_conditions[$plugin_key]);
+      unset($node->win_conditions[$plugin_key]);
     }
   }
 }
@@ -418,7 +418,10 @@ function webform_ab_load(&$node) {
   $result = db_query('SELECT * FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
   $load->win_conditions = array();
   while ($row = db_fetch_object($result)) {
-    $load->win_conditions[$row->id] = $row;
+    $load->win_conditions[$row->plugin_key] = array(
+      'enable' => 1,
+      'options' => unserialize($row->options),
+    );
   }
     
   // Load the included webforms and info about them
@@ -516,7 +519,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       '#weight' => 2,
     );
     
-    $node->content['winning_conditions'] = array(
+    $node->content['win_conditions'] = array(
       '#type' => 'fieldset',
       '#title' => t('Winning Conditions'),
       '#description' => t('Conditions necessary for a form to win the test.'),
