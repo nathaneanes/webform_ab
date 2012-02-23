@@ -363,8 +363,6 @@ function webform_ab_form(&$node, $form_state) {
  * Check values from the node edit form
  */
 function webform_ab_validate($node, &$form) {
-  dsm($node, 'node in validate');
-  
   // Validate the winning conditions
   // First: make sure at least one is selected
   $has_win_condition = FALSE;
@@ -385,6 +383,7 @@ function webform_ab_validate($node, &$form) {
     }
   }
   
+  // Throw an error if they don't have ANY winning condition chosen
   if (!$has_win_condition) {
     form_set_error('winning_conditions', t('Please select at least one winning condition for the test.'));
   }
@@ -455,8 +454,22 @@ function webform_ab_update($node, $is_insert = FALSE) {
     $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', daily_notification_email='%s', daily_notification_sms='%s', win_notification_email='%s', win_notification_sms='%s', public_teaser='%s' WHERE nid=%d";
     $replacement_values[] = $node->nid;
   }
-    
   db_query($sql, $replacement_values);
+  
+  
+  // Save win condition info
+  // Remove old records first
+  db_query('DELETE FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
+  // $node->winning_conditions has been prepped for saving already in
+  // _webform_ab_prep_node_for_save()
+  foreach ($node->winning_conditions as $plugin_key => $config) {
+    $row = array(
+      'test_nid' => $node->nid,
+      'plugin_key' => $plugin_key,
+      'options' => $config['options'],
+    );
+    drupal_write_record('webform_ab_win_conditions', $row);
+  }
 }
 
 
@@ -484,9 +497,14 @@ function _webform_ab_prep_node_for_save(&$node) {
     $node->win_notification_email = implode(',', $fixed);
   }
   
-  // If the percent_conversions is a decimal less than 1, convert to a full number
-  if ($node->percent_conversions > 0 && $node->percent_conversions <= 1) {
-    $node->percent_conversions = $node->percent_conversions * 100;
+  if (!is_array($node->winning_conditions)) {
+    $node->winning_conditions = array();
+  }
+  foreach ($node->winning_conditions as $plugin_key => $config) {
+    // If this win condition is NOT enabled, remove it from the array
+    if (!($config['enable'] > 0)) {
+      unset($node->winning_conditions[$plugin_key]);
+    }
   }
 }
 
@@ -529,10 +547,11 @@ function webform_ab_load(&$node) {
  * Delete all data for a test
  */
 function webform_ab_delete(&$node) {
-  db_query('DELETE FROM {webform_ab} WHERE nid=%d', array($node->nid));
-  db_query('DELETE FROM {webform_ab_conversion} WHERE test_nid=%d', array($node->nid));
-  db_query('DELETE FROM {webform_ab_forms} WHERE test_nid=%d', array($node->nid));
-  db_query('DELETE FROM {webform_ab_hits} WHERE test_nid=%d', array($node->nid));
+  db_query('DELETE FROM {webform_ab} WHERE nid=%d', $node->nid);
+  db_query('DELETE FROM {webform_ab_conversion} WHERE test_nid=%d', $node->nid);
+  db_query('DELETE FROM {webform_ab_forms} WHERE test_nid=%d', $node->nid);
+  db_query('DELETE FROM {webform_ab_hits} WHERE test_nid=%d', $node->nid);
+  db_query('DELETE FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
 }
 
 
@@ -540,8 +559,8 @@ function webform_ab_delete(&$node) {
  * Implementation of hook_view().
  */
 function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
-  // If the current user has permission to modify this test, show them the overview
-  // page instead of directing them to one of the webforms in the test
+  // If the current user has permission to modify this test, show them the
+  // overview page instead of directing them to one of the webforms in the test
   // If view_webform is set in the URL, don't show the overview
   if (node_access('update', $node) && $_GET['view_webform'] != 1) {
     $type = node_get_types('type', $node);

@@ -233,9 +233,10 @@ function webform_ab_schema() {
       ),
       'options' => array(
         'description' => t('Serialized options'),
+        'serialize' => TRUE,
         'type' => 'text',
         'size' => 'big',
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
     ),
     'primary key' => array('id'),
