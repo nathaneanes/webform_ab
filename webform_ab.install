@@ -44,26 +44,6 @@ function webform_ab_schema() {
         'default' => '',
         'not null' => FALSE,
       ),
-      'minimum_hits' => array(
-        'type' => 'int',
-        'description' => 'The minimum number of hits to a form before a winner can be declared.',
-        'default' => '0',
-        'not null' => FALSE,
-        'unsigned' => TRUE,
-      ),
-      'win_type' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'description' => 'The type of win condition that will be used for this test, such as total conversions, percent conversions, etc',
-        'default' => '',
-        'not null' => FALSE,
-      ),
-      'win_value' => array(
-        'type' => 'float',
-        'description' => 'The value for the winning condition, used with win_type - for example, if win_type is total conversions, this might be 50. If win_type is percent conversions, this might be 0.15.',
-        'default' => 0,
-        'not null' => FALSE,
-      ),
       'daily_notification_email' => array(
         'type' => 'varchar',
         'length' => 255,
@@ -231,6 +211,37 @@ function webform_ab_schema() {
     ),
   );
   
+  // Win condition plugin config
+  $schema['webform_ab_win_conditions'] = array(
+    'description' => t('Win condition plugin config'),
+    'fields' => array(
+      'id' => array(
+        'description' => t('Row id'),
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'test_nid' => array(
+        'description' => t('Node ID for the Webform A/B test node'),
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'plugin_key' => array(
+        'description' => t('Key for plugin'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'options' => array(
+        'description' => t('Serialized options'),
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  
+  
   
   return $schema;
 }
@@ -265,3 +276,11 @@ function webform_ab_update_6003() {
   db_add_field($updates, 'webform_ab', 'public_teaser', array('type' => 'text', 'not null' => FALSE));
   return $updates;
 }
+
+
+/**
+ * 2.x update:
+ *  - Add webform_ab_win_conditions table
+ *  - Check for ctools
+ *  - Remove win_type, win_value, minimum_hits from webform_ab
+ */

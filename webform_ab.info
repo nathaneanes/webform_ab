@@ -4,3 +4,4 @@ core = 6.x
 package = Webform
 
 dependencies[] = webform
+dependencies[] = ctools

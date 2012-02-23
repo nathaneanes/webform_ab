@@ -239,21 +239,10 @@ function webform_ab_form(&$node, $form_state) {
     '#title' => t('Winning Conditions'),
     '#description' => t('Conditions necessary for a form to win the test.'),
     '#collapsible' => TRUE,
-    '#collapsed' => FALSE
+    '#collapsed' => FALSE,
+    '#tree' => TRUE,
   );
   
-  $form['winning_conditions']['minimum_hits'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Minimum Hits'),
-    '#description' => t('A webform must be seen by this many users before it can be declared the winner. This prevents a winner from being declared before enough data has been collected.'),
-    '#size' => 40,
-    '#maxlength' => 255,
-    '#default_value' => empty($node->minimum_hits) ? 100 : $node->minimum_hits,
-    '#required' => TRUE,
-  );
-  
-  
-  $win_conditions = _webform_ab_available_win_conditions();
   $form['winning_conditions']['win_type'] = array(
     '#type' => 'item',
     '#title' => t('Win Criteria'),
@@ -261,52 +250,24 @@ function webform_ab_form(&$node, $form_state) {
     '#suffix' => '</div>',
     '#required' => TRUE,
   );
+
+  $win_conditions = _webform_ab_get_win_condition_plugins();
+  dsm($win_conditions, 'win plugins');
+
+  foreach ($win_conditions as $plugin_key => $plugin) {
+    $form['winning_conditions'][$plugin_key]['enable'] = array(
+      '#type' => 'checkbox',
+      '#title' => $plugin['title'],
+    );
+    if($config_form_function = ctools_plugin_get_function($plugin, 'config form')) {
+      $form['winning_conditions'][$plugin_key]['options'] = $config_form_function();
+      if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
+        $form['winning_conditions'][$plugin_key]['#conig_validator'] = $config_validation_function;
+      }
+    }
+  }
   
-  $form['winning_conditions']['win_type']['total_conversions_group'] = array(
-    '#prefix' => '<div class="container form-item">',
-    '#suffix' => '</div>'
-  );
   
-  $form['winning_conditions']['win_type']['total_conversions_group']['total_conversions_radio'] = array(
-    '#type' => 'radio',
-    '#title' => $win_conditions['total_conversions'],
-    '#description' => t('This many conversions must be made by a webform before it is declared the winner.'),
-    '#return_value' => 'total_conversions',
-    '#parents' => array('win_type'),
-    '#default_value' => $node->win_type,
-  );
-  
-  $form['winning_conditions']['win_type']['total_conversions_group']['total_conversions'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Number'),
-    '#description' => t('Number of conversions'),
-    '#size' => 40,
-    '#maxlength' => 255,
-    '#default_value' => $node->total_conversions,
-  );
-  
-  $form['winning_conditions']['win_type']['percent_conversions_group'] = array(
-    '#prefix' => '<div class="container form-item">',
-    '#suffix' => '</div>'
-  );
-  
-  $form['winning_conditions']['win_type']['percent_conversions_group']['percent_conversions_radio'] = array(
-    '#type' => 'radio',
-    '#title' => $win_conditions['percent_conversions'],
-    '#description' => t('A webform must reach this percentage of conversions to be declared the winner.'),
-    '#return_value' => 'percent_conversions',
-    '#parents' => array('win_type'),
-    '#default_value' => $node->win_type,
-  );
-  
-  $form['winning_conditions']['win_type']['percent_conversions_group']['percent_conversions'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Percentage'),
-    '#description' => t('Percentage of hits that become conversions. Enter either as 25% or 0.25.'),
-    '#size' => 10,
-    '#maxlength' => 255,
-    '#default_value' => ($node->percent_conversions) ? ($node->percent_conversions . '%') : '',
-  );
   
   
   /* Notifications won't be implemented till v2. Leaving these out for now.
@@ -380,10 +341,9 @@ function webform_ab_form(&$node, $form_state) {
  * Check values from the node edit form
  */
 function webform_ab_validate($node, &$form) {
-  // Make sure the minimum hits field is an int
-  if (!ctype_digit($node->minimum_hits) || !($node->minimum_hits > 0)) {
-    form_set_error('minimum_hits', t('Please enter an integer for Minimum Hits.'));
-  }
+  dsm($node, 'node in validate');
+  dsm($form, 'form in validate');
+
   // Make sure they chose a win criteria
   if (empty($node->win_type)) {
     form_set_error('win_type', t('Please choose a Win Criteria.'));
@@ -479,7 +439,6 @@ function webform_ab_update($node, $is_insert = FALSE) {
   $replacement_values = array(
     $node->nid,
     $node->webform_types,
-    $node->minimum_hits,
     $node->win_type,
     $node->{$node->win_type},
     $node->daily_notification_email,
@@ -490,10 +449,10 @@ function webform_ab_update($node, $is_insert = FALSE) {
   );
   
   if($is_insert) {
-    $sql = "INSERT INTO {webform_ab} (nid, webform_types, minimum_hits, win_type, win_value, daily_notification_email, daily_notification_sms, win_notification_email, win_notification_sms, public_teaser) VALUES(%d, '%s', %d, '%s', %f, '%s', '%s', '%s', '%s', '%s')";
+    $sql = "INSERT INTO {webform_ab} (nid, webform_types, win_type, win_value, daily_notification_email, daily_notification_sms, win_notification_email, win_notification_sms, public_teaser) VALUES(%d, '%s', '%s', %f, '%s', '%s', '%s', '%s', '%s')";
   }
   else {
-    $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', minimum_hits=%d, win_type='%s', win_value=%f, daily_notification_email='%s', daily_notification_sms='%s', win_notification_email='%s', win_notification_sms='%s', public_teaser='%s' WHERE nid=%d";
+    $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', win_type='%s', win_value=%f, daily_notification_email='%s', daily_notification_sms='%s', win_notification_email='%s', win_notification_sms='%s', public_teaser='%s' WHERE nid=%d";
     $replacement_values[] = $node->nid;
   }
     
@@ -537,10 +496,15 @@ function _webform_ab_prep_node_for_save(&$node) {
  */
 function webform_ab_load(&$node) {
   $load = db_fetch_object(db_query('SELECT * FROM {webform_ab} WHERE nid = %d', $node->nid));
-  if (!empty($load->win_type)) {
-    $load->{$load->win_type} = $load->win_value;
-  }
   
+  // Load the winning conditions for this test
+  $result = db_query('SELECT * FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
+  $load->win_conditions = array();
+  while ($row = db_fetch_object($result)) {
+    $load->win_conditions[$row->id] = $row;
+  }
+    
+  // Load the included webforms and info about them
   $result = db_query('SELECT f.webform_nid, f.status, n.title, COUNT(DISTINCT hits.hit_id) as hits, COUNT(DISTINCT con.sid) AS conversions
     FROM {webform_ab_forms} f
     LEFT JOIN {node} n ON n.nid = f.webform_nid
@@ -643,12 +607,6 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       '#weight' => 10,
     );
 
-    $node->content['winning_conditions']['minimum_hits'] = array(
-      '#type' => 'item',
-      '#title' => t('Minimum Hits'),
-      '#value' => $node->minimum_hits,
-      '#weight' => 0,
-    );
 
     $win_conditions = _webform_ab_available_win_conditions();
     $node->content['winning_conditions']['win_type'] = array(
@@ -961,11 +919,6 @@ function _webform_ab_check_for_win($test_nid) {
         $winner_found = TRUE;
         break;
       }
-
-      // Not the winner - check if it has reached minimum hits yet
-      if ($details['hits'] >= $node->minimum_hits) {
-        $winnable_webforms[$webform_nid] = $details;
-      }
     }
     
     if (count($winnable_webforms) > 0) {
@@ -1105,5 +1058,40 @@ function _webform_ab_available_win_conditions() {
 if (!function_exists('trim_byref')) {
   function trim_byref(&$string) {
     $string = trim($string);
+  }
+}
+
+
+
+
+/******************************************************************************
+ * Plugin stuff
+ */
+
+/**
+ * Get an array of all win condition plugins
+ */
+function _webform_ab_get_win_condition_plugins() {
+  ctools_include('plugins');
+  return ctools_get_plugins('webform_ab', 'win_conditions');
+}
+
+/**
+ * Get a particular win condition plugin
+ */
+function _webform_ab_get_win_condition_plugin($plugin_key) {
+  ctools_include('plugins');
+  return ctools_get_plugins('webform_ab', 'win_conditions', $plugin_key);
+}
+
+
+
+/**
+ * Implementation of hook_ctools_plugin_directory().
+ * Tell ctools where this module's plugins live
+ */
+function webform_ab_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'webform_ab') {
+    return 'plugins/' . $plugin;
   }
 }
