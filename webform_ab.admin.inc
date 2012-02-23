@@ -245,7 +245,8 @@ function webform_ab_webform_list_add_submit($form, &$form_state) {
   // Only continue if they actually selected a webform
   if ($form_state['values']['add_form_id'] > 0) {
     // Make sure the chosen webform isn't already in the test
-    // It wouldn't have been an option if it was already in the test, but be on the safe side
+    // It wouldn't have been an option if it was already in the test, but be on
+    // the safe side
     $exists = db_result(db_query('SELECT COUNT(*) FROM {webform_ab_forms} WHERE test_nid = %d AND webform_nid = %d', array($form_state['values']['test_nid'], $form_state['values']['add_form_id']))) > 0;
 
     if (!$exists) {

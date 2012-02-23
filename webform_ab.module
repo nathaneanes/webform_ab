@@ -25,9 +25,11 @@
 
 // Active status, for webforms within a test
 define('WEBFORM_AB_WEBFORM_STATUS_ACTIVE', 1);
-// Win status for webforms within a test - only one webform per test should have this
+// Win status for webforms within a test - only one webform per test should
+// have this
 define('WEBFORM_AB_WEBFORM_STATUS_WINNER', 2);
-// Retired status for webforms within a test - means that a different webform won the test
+// Retired status for webforms within a test - means that a different webform
+// won the test
 define('WEBFORM_AB_WEBFORM_STATUS_RETIRED', 3);
 
 /**
@@ -289,71 +291,6 @@ function webform_ab_form(&$node, $form_state) {
     }
   }
   
-  
-  
-  
-  /* Notifications won't be implemented till v2. Leaving these out for now.
-  
-  $form['notifications'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Notifications'),
-    '#description' => t('The following options are specific to this test. You can also set default values for future tests in the Webform A/B Test module settings page.'),
-    '#collapsible' => TRUE,
-    '#collapsed' => FALSE
-  );
-  
-  $form['notifications']['daily_summaries'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Daily Summaries'),
-    '#collapsible' => TRUE,
-    '#collapsed' => FALSE,
-  );
-  
-  $form['notifications']['daily_summaries']['daily_notification_email'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Send daily reports by email to'),
-    '#description' => t('Separate e-mail addresses with a comma.'),
-    '#size' => 40,
-    '#maxlength' => 255,
-    '#default_value' => $node->daily_notification_email,
-  );
-
-  $form['notifications']['daily_summaries']['daily_notification_sms'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Send daily reports by SMS to'),
-    '#description' => t('Separate cell phone numbers with a comma.'),
-    '#size' => 40,
-    '#maxlength' => 255,
-    '#default_value' => $node->daily_notification_sms,
-  );
-  
-  
-  $form['notifications']['winning_notice'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Winning Notice'),
-    '#collapsible' => TRUE,
-    '#collapsed' => FALSE,
-  );
-  
-  $form['notifications']['winning_notice']['win_notification_email'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Send winning notice by email to'),
-    '#description' => t('Separate e-mail addresses with a comma.'),
-    '#size' => 40,
-    '#maxlength' => 255,
-    '#default_value' => $node->win_notification_email,
-  );
-
-  $form['notifications']['winning_notice']['win_notification_sms'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Send winning notice by SMS to'),
-    '#description' => t('Separate cell phone numbers with a comma.'),
-    '#size' => 40,
-    '#maxlength' => 255,
-    '#default_value' => $node->win_notification_sms,
-  );
-  */
-
   return $form;
 }
 
@@ -387,37 +324,6 @@ function webform_ab_validate($node, &$form) {
   if (!$has_win_condition) {
     form_set_error('winning_conditions', t('Please select at least one winning condition for the test.'));
   }
-  
-
-  /* Notifications won't be implemented till v2. Leaving these out for now.
-  // Validate daily summary email address(es)
-  if(trim($node->daily_notification_email) != '') {
-    $addresses = explode(',', $node->daily_notification_email);
-    $invalid = array();
-    foreach ($addresses as $address) {
-      if (!valid_email_address(trim($address))) {
-        $invalid[] = $address;
-      }
-    }
-    if (!empty($invalid)) {
-      form_set_error('daily_notification_email', t('Invalid e-mail address(es) given for daily summaries: %email', array('%email' => implode(', ', $invalid))));
-    }
-  }
-  
-  // Validate winning notice email address(es)
-  if(trim($node->win_notification_email) != '') {
-    $addresses = explode(',', $node->win_notification_email);
-    $invalid = array();
-    foreach ($addresses as $address) {
-      if (!valid_email_address(trim($address))) {
-        $invalid[] = $address;
-      }
-    }
-    if (!empty($invalid)) {
-      form_set_error('win_notification_email', t('Invalid e-mail address(es) given for winning notice: %email', array('%email' => implode(', ', $invalid))));
-    }
-  }
-  */
 }
 
 
@@ -628,63 +534,6 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     
     // @todo: re-add display of winning conditions
 
-
-    /* Notifications won't be implemented till v2. Leaving these out for now.
-    $node->content['notifications'] = array(
-    	'#type' => 'fieldset',
-    	'#title' => t('Notifications'),
-    	'#description' => t('The following options are specific to this test. You can also set default values for future tests in the Webform A/B Test module settings page.'),
-    	'#collapsible' => FALSE,
-    	'#collapsed' => FALSE,
-    	'#weight' => 20,
-    );
-
-    $node->content['notifications']['daily_summaries'] = array(
-    	'#type' => 'fieldset',
-    	'#title' => t('Daily Summaries'),
-    	'#collapsible' => FALSE,
-    	'#collapsed' => FALSE,
-    	'#weight' => 0,
-    );
-
-    $node->content['notifications']['daily_summaries']['daily_notification_email'] = array(
-    	'#type' => 'item',
-    	'#title' => t('Send daily reports by email to'),
-    	'#value' => $node->daily_notification_email,
-    	'#weight' => 1,
-    );
-
-    $node->content['notifications']['daily_summaries']['daily_notification_sms'] = array(
-    	'#type' => 'item',
-    	'#title' => t('Send daily reports by SMS to'),
-    	'#value' => $node->daily_notification_sms,
-    	'#weight' => 2,
-    );
-
-
-    $node->content['notifications']['winning_notice'] = array(
-    	'#type' => 'fieldset',
-    	'#title' => t('Winning Notice'),
-    	'#collapsible' => FALSE,
-    	'#collapsed' => FALSE,
-    	'#weight' => 3,
-    );
-
-    $node->content['notifications']['winning_notice']['win_notification_email'] = array(
-    	'#type' => 'item',
-    	'#title' => t('Send winning notice by email to'),
-    	'#value' => $node->win_notification_email,
-    	'#weight' => 4,
-    );
-
-    $node->content['notifications']['winning_notice']['win_notification_sms'] = array(
-    	'#type' => 'item',
-    	'#title' => t('Send winning notice by SMS to'),
-    	'#value' => $node->win_notification_sms,
-    	'#weight' => 5,
-    );
-    */
-
     return $node;
   }
   
@@ -714,13 +563,13 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
         $_SESSION['webform_ab']['webform_for_tests'][$node->nid] = $winner_webform_id;
         drupal_goto('node/' . $winner_webform_id, $query_vars);
       }
-      // See if they already have a webform nid in their $_SESSION for this test, and
-      // that it's still a valid webform nid for this test (in case the webform was
-      // removed from the test)
+      // See if they already have a webform nid in their $_SESSION for this
+      // test, and that it's still a valid webform nid for this test (in case
+      // the webform was removed from the test)
       else {
         if (empty($_SESSION['webform_ab']['webform_for_tests'][$node->nid]) || empty($node->included_webforms[$_SESSION['webform_ab']['webform_for_tests'][$node->nid]])) {
-          // See if this user has hit this test before, and use the same webform as
-          // the last time
+          // See if this user has hit this test before, and use the same
+          // webform as the last time
           global $user;
           if ($user->uid > 0) {
             $previous_test_hit = db_fetch_array(db_query("SELECT webform_nid FROM {webform_ab_hits} WHERE test_nid=%d AND uid=%d", array($node->nid, $user->uid)));
@@ -733,7 +582,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
           // one at random
           if (empty($webform_nid_to_view)) {
             // Pick a random webform nid from the ones in this test
-            $webform_nid_to_view = array_rand($node->included_webforms);          
+            $webform_nid_to_view = array_rand($node->included_webforms);
           }
         
           // Save it to the $_SESSION so this user always gets the same one
@@ -824,8 +673,8 @@ function webform_ab_form_alter(&$form, $form_state, $form_id) {
             if (!empty($form_state['storage']) || !empty($form_state['post'])) {
               $log_hit = FALSE;
             }
-            // If repeat hits from a user should be ignore, check if this user has
-            // already hit the form
+            // If repeat hits from a user should be ignore, check if this user
+            // has already hit the form
             elseif (variable_get('webform_ab_ignore_repeat_hits', '1') > 0) {
               if ($user->uid > 0) {
                 $existing_hit = db_fetch_array(db_query("SELECT hit_id FROM {webform_ab_hits} WHERE test_nid=%d AND webform_nid=%d AND uid=%d", array($test_nid, $webform_nid, $user->uid)));
@@ -853,8 +702,8 @@ function webform_ab_form_alter(&$form, $form_state, $form_id) {
 
 
 /**
- * Handle the submission of a webform that is part of a test. Log the conversion 
- * if appropriate.
+ * Handle the submission of a webform that is part of a test. Log the
+ * conversion if appropriate.
  */
 function webform_ab_webform_submit($form, &$form_state) {
   // Determine if this conversion should be logged
@@ -863,8 +712,8 @@ function webform_ab_webform_submit($form, &$form_state) {
     $test_node = node_load($test_nid);
     $conversion_check_results = module_invoke_all('webform_ab_validate_conversion', $test_node->webform_types, $test_node, $form_state);
   
-    // Loop over the returned values from the hook and log a conversion if any of
-    // them returned TRUE
+    // Loop over the returned values from the hook and log a conversion if any
+    // of them returned TRUE
     foreach ($conversion_check_results as $val) {
       if ($val === TRUE) {
         db_query("INSERT INTO {webform_ab_conversion} (test_nid, webform_nid, sid) VALUES(%d, %d, %d)", array($form_state['values']['test_nid'], $form_state['values']['webform_nid'], $form_state['values']['details']['sid']));
@@ -898,11 +747,13 @@ function webform_ab_webform_ab_validate_conversion($webform_types, $test_node, $
  * check for the basic Total Conversions and Conversion Percentage criteria
  */
 function _webform_ab_check_for_win($test_nid) {
-  // Check if there is already a winner, and gather a list of forms that have reached the minimum number of hits
+  // Check if there is already a winner, and gather a list of forms that have
+  // reached the minimum number of hits
   $winner_found = _webform_ab_has_winner_already($test_nid);
 
-  // If there is no winner yet, see if any webforms have reached the minimum_hits 
-  // threshhold and ask other modules if any of those webforms has won
+  // If there is no winner yet, see if any webforms have reached the
+  // minimum_hits threshhold and ask other modules if any of those webforms has
+  // won
   if (!$winner_found) {
     /**
      * Load the test node, and force a reload (so that it's not pulled from
@@ -925,11 +776,13 @@ function _webform_ab_check_for_win($test_nid) {
       // Call a hook to check for wins on all modules that define winning conditions
       $winning_details = module_invoke_all('webform_ab_check_win_condition', $node->win_type, $winnable_webforms, $node);
 
-      // Return values of hook implementations are put into a flat array. Loop over and
-      // see if any of the returns is a webform nid. Modules that don't find a win will
-      // return 0, when they do find a win it will return the webform nid
+      // Return values of hook implementations are put into a flat array. Loop
+      // over and see if any of the returns is a webform nid. Modules that
+      // don't find a win will return 0, when they do find a win it will return
+      // the webform nid
       foreach ($winning_details as $webform_nid) {
-        // Double-check that the winning webform nid is in the included_webforms array
+        // Double-check that the winning webform nid is in the
+        // included_webforms array
         if ($node->included_webforms[$webform_nid]) {
           $winning_webform = $node->included_webforms[$webform_nid];
           // Log the win
@@ -1055,7 +908,7 @@ if (!function_exists('trim_byref')) {
 
 
 /******************************************************************************
- * Plugin stuff
+ * CTools Plugin Support
  */
 
 /**
