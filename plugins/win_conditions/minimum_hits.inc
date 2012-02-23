@@ -32,8 +32,10 @@ function webform_ab_minimum_hits_config() {
 /**
  * Validate the config for this plugin
  */
-function webform_ab_minimum_hits_config_validate($form_state) {
-  return TRUE;
+function webform_ab_minimum_hits_config_validate($config, $field_name_prefix) {
+  if (!ctype_digit($config['hits']) || !($config['hits'] > 0)) {
+    form_set_error($field_name_prefix . 'hits', t('Please enter an integer for Minimum Hits win condition.'));
+  }
 }
 
 /**

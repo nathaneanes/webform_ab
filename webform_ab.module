@@ -242,28 +242,20 @@ function webform_ab_form(&$node, $form_state) {
     '#collapsed' => FALSE,
     '#tree' => TRUE,
   );
-  
-  $form['winning_conditions']['win_type'] = array(
-    '#type' => 'item',
-    '#title' => t('Win Criteria'),
-    '#prefix' => '<div class="win_type_container">',
-    '#suffix' => '</div>',
-    '#required' => TRUE,
-  );
 
+  // Get win condition plugins and show them as options
   $win_conditions = _webform_ab_get_win_condition_plugins();
-  dsm($win_conditions, 'win plugins');
 
   foreach ($win_conditions as $plugin_key => $plugin) {
+    // Add a checkbox to enable this win condition
     $form['winning_conditions'][$plugin_key]['enable'] = array(
       '#type' => 'checkbox',
       '#title' => $plugin['title'],
     );
+    // If this win condition offers more options (as most do), add the form
+    // elements for those
     if($config_form_function = ctools_plugin_get_function($plugin, 'config form')) {
       $form['winning_conditions'][$plugin_key]['options'] = $config_form_function();
-      if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
-        $form['winning_conditions'][$plugin_key]['#conig_validator'] = $config_validation_function;
-      }
     }
   }
   
@@ -342,49 +334,29 @@ function webform_ab_form(&$node, $form_state) {
  */
 function webform_ab_validate($node, &$form) {
   dsm($node, 'node in validate');
-  dsm($form, 'form in validate');
-
-  // Make sure they chose a win criteria
-  if (empty($node->win_type)) {
-    form_set_error('win_type', t('Please choose a Win Criteria.'));
+  
+  // Validate the winning conditions
+  // First: make sure at least one is selected
+  $has_win_condition = FALSE;
+  if (is_array($node->winning_conditions)) {
+    foreach ($node->winning_conditions as $plugin_key => $config) {
+      // If this win condition is enabled, check if the plugin provides a
+      // validation method that should be called
+      if ($config['enable'] > 0) {
+        $has_win_condition = TRUE;
+        $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
+        if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
+          // Call the validate function. Pass in a field name prefix for use by
+          // form_set_error in the validation function
+          $field_name_prefix = 'winning_conditions][' . $plugin_key . '][options][';
+          $config_validation_function($config['options'], $field_name_prefix);
+        }
+      }
+    }
   }
-  else {
-    // Based on the chosen win type, find the title of the field
-    $field_title = $form['winning_conditions']['win_type'][$node->win_type . '_group'][$node->win_type . '_radio']['#title'];
-
-    // Make sure they entered a value for the win criteria
-    if (empty($node->{$node->win_type})) {
-      form_set_error($node->win_type, t('You must define a value for %criteria', array('%criteria' => $field_title)));
-    }
-    else {
-      $win_value = trim($node->{$node->win_type});
-      
-      // Validate value given for a Total Conversions win criteria
-      if ($node->win_type == 'total_conversions') {
-        if (!($win_value > 0) || !ctype_digit($win_value)) {
-          form_set_error($node->win_type, t('You must define an integer value for %criteria', array('%criteria' => $field_title)));
-        }
-      }
-      // Validate value given for a Conversion Percentage win criteria
-      elseif ($node->win_type == 'percent_conversions') {
-        // If it's between 0 and 1, it's a decimal and OK
-        if ($win_value > 0 && $win_value <= 1) {
-          // Fine
-        }
-        // See if the string ends with a percentage
-        elseif (substr($win_value, -1) == '%') {
-          // Strip the percent sign
-          $number = substr($win_value, 0, strlen($win_value) - 1);
-          if (!($number > 0 && $number <= 100)) {
-            form_set_error($node->win_type, t('Please enter a valid percentage for %criteria. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).', array('%criteria' => $field_title)));
-          }
-        }
-        // Otherise, failed
-        else {
-          form_set_error($node->win_type, t('Please enter a valid percentage for %criteria. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).', array('%criteria' => $field_title)));
-        }
-      }
-    }
+  
+  if (!$has_win_condition) {
+    form_set_error('winning_conditions', t('Please select at least one winning condition for the test.'));
   }
   
 
@@ -439,8 +411,6 @@ function webform_ab_update($node, $is_insert = FALSE) {
   $replacement_values = array(
     $node->nid,
     $node->webform_types,
-    $node->win_type,
-    $node->{$node->win_type},
     $node->daily_notification_email,
     $node->daily_notification_sms,
     $node->win_notification_email,
@@ -449,10 +419,10 @@ function webform_ab_update($node, $is_insert = FALSE) {
   );
   
   if($is_insert) {
-    $sql = "INSERT INTO {webform_ab} (nid, webform_types, win_type, win_value, daily_notification_email, daily_notification_sms, win_notification_email, win_notification_sms, public_teaser) VALUES(%d, '%s', '%s', %f, '%s', '%s', '%s', '%s', '%s')";
+    $sql = "INSERT INTO {webform_ab} (nid, webform_types, daily_notification_email, daily_notification_sms, win_notification_email, win_notification_sms, public_teaser) VALUES(%d, '%s', '%s', '%s', '%s', '%s', '%s')";
   }
   else {
-    $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', win_type='%s', win_value=%f, daily_notification_email='%s', daily_notification_sms='%s', win_notification_email='%s', win_notification_sms='%s', public_teaser='%s' WHERE nid=%d";
+    $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', daily_notification_email='%s', daily_notification_sms='%s', win_notification_email='%s', win_notification_sms='%s', public_teaser='%s' WHERE nid=%d";
     $replacement_values[] = $node->nid;
   }
     
@@ -606,29 +576,10 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       '#collapsed' => FALSE,
       '#weight' => 10,
     );
-
-
-    $win_conditions = _webform_ab_available_win_conditions();
-    $node->content['winning_conditions']['win_type'] = array(
-      '#type' => 'item',
-      '#title' => t('Win Criteria'),
-      '#value' => $win_conditions[$node->win_type],
-      '#weight' => 1,
-    );
-
-    if ($node->win_type == 'percent_conversions') {
-      $win_value = $node->{$node->win_type} . '%';
-    }
-    else {
-      $win_value = $node->{$node->win_type};
-    }
-    $node->content['winning_conditions']['win_value'] = array(
-      '#type' => 'item',
-      '#title' => t('Win Value'),
-      '#value' => $win_value,
-      '#weight' => 2,
-    );
     
+    // @todo: re-add display of winning conditions
+
+
     /* Notifications won't be implemented till v2. Leaving these out for now.
     $node->content['notifications'] = array(
     	'#type' => 'fieldset',
@@ -1041,16 +992,6 @@ function webform_ab_should_log_hits() {
   // User didn't qualify for any of the exceptions, so their hits/conversions
   // should be recorded
   return true;
-}
-
-/**
- * Return an array of the valid win conditions with labels
- */
-function _webform_ab_available_win_conditions() {
-  return array(
-    'total_conversions' => t('Total Conversions'),
-    'percent_conversions' => t('Conversion Percentage'),
-  );
 }
 
 

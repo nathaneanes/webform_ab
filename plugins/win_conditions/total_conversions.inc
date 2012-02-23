@@ -30,7 +30,10 @@ function webform_ab_total_conversions_config() {
 /**
  * Validate the config for this plugin
  */
-function webform_ab_total_conversions_config_validate($form_state) {
+function webform_ab_total_conversions_config_validate($config, $field_name_prefix) {
+  if (!ctype_digit($config['conversions']) || !($config['conversions'] > 0)) {
+    form_set_error($field_name_prefix . 'conversions', t('Please enter an integer for Number of Conversions win condition.'));
+  }
   return TRUE;
 }
 

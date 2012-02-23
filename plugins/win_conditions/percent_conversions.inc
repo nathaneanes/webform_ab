@@ -33,8 +33,25 @@ function webform_ab_percent_conversions_config() {
 /**
  * Validate the config for this plugin
  */
-function webform_ab_percent_conversions_config_validate($form_state) {
-  return TRUE;
+function webform_ab_percent_conversions_config_validate($config, $field_name_prefix) {
+  $value = $config['percentage'];
+
+  // If it's between 0 and 1, it's a decimal and OK
+  if ($value > 0 && $value <= 1) {
+    // Fine
+  }
+  // See if the string ends with a percentage
+  elseif (substr(trim($value), -1) == '%') {
+    // Strip the percent sign
+    $number = substr($value, 0, strlen($value) - 1);
+    if (!($number > 0 && $number <= 100)) {
+      form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win conditoion. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
+    }
+  }
+  // Not a number
+  else {
+    form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win conditoion. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
+  }
 }
 
 /**
