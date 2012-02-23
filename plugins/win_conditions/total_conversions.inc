@@ -14,6 +14,9 @@ $plugin = array(
 );
 
 
+/**
+ * Return the config options form for this win condition
+ */
 function webform_ab_total_conversions_config() {
   $form = array();
   $form['conversions'] = array(

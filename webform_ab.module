@@ -1025,6 +1025,16 @@ function _webform_ab_get_win_condition_plugin($plugin_key) {
   return ctools_get_plugins('webform_ab', 'win_conditions', $plugin_key);
 }
 
+/**
+ * Implements hook_ctools_plugin_TYPE().
+ * Tell ctools a bit about the win_conditions plugin type
+ */
+function webform_ab_ctools_plugin_win_conditions() {
+  return array(
+    'use hooks' => TRUE,
+    'cache' => TRUE,
+  );
+}
 
 
 /**
