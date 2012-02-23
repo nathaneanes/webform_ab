@@ -185,6 +185,8 @@ function webform_ab_access($op, $node, $account) {
  * Return the form for admins to edit webform_ab nodes
  */
 function webform_ab_form(&$node, $form_state) {
+  ctools_include('dependent');
+  
   // Add styling for the form
   drupal_add_css(drupal_get_path('module', 'webform_ab') . '/webform_ab.css');
   
@@ -255,7 +257,35 @@ function webform_ab_form(&$node, $form_state) {
     // If this win condition offers more options (as most do), add the form
     // elements for those
     if($config_form_function = ctools_plugin_get_function($plugin, 'config form')) {
-      $form['winning_conditions'][$plugin_key]['options'] = $config_form_function();
+      // Decide on an ID for the fieldset wrapping the config options
+      // CTools JS seems to make assumptions about what this should be, so
+      // don't change it
+      $options_div_id = str_replace('_', '-', 'edit-winning-conditions-' . $plugin_key . '-options');
+      // Determine the selector for the Enable checkbox
+      $enable_checkbox_id = str_replace('_', '-', 'edit-winning-conditions-' . $plugin_key . '-enable');
+      
+      // Create a fieldset for the config options and make it dependent on the
+      // Enable checkbox for this win condition
+      $form['winning_conditions'][$plugin_key]['options'] = array(
+        '#type' => 'fieldset',
+        '#title' => $plugin['title'] . ' ' . t('Options'),
+        '#collapsible' => FALSE,
+        // Need to set #input to true for dependent fields to work
+        '#input' => TRUE,
+        // Need an ID to use for hiding
+        '#attributes' => array('id' => $options_div_id),
+        // Add dependent field processing and rule
+        '#process' => array('ctools_dependent_process'),
+        '#dependency' => array($enable_checkbox_id => array('1')),
+        // Need to wrap the fieldset in a div because the parent element is the
+        // one hidden (so it will hide this div)
+        '#prefix' => '<div>',
+        '#suffix' => '</div>',
+      );
+      
+      // Get the config form fields and merge them into the fieldset
+      $config_form = $config_form_function();
+      $form['winning_conditions'][$plugin_key]['options'] = array_merge($form['winning_conditions'][$plugin_key]['options'], $config_form);
     }
   }
   
