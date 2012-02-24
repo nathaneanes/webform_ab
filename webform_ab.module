@@ -400,8 +400,16 @@ function _webform_ab_prep_node_for_save(&$node) {
     $node->win_conditions = array();
   }
   foreach ($node->win_conditions as $plugin_key => $config) {
+    // For enabled plugins, check if they have a save prep function
+    if ($config['enable'] > 0) {
+      $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
+      if($save_prep_function = ctools_plugin_get_function($plugin, 'prep for save')) {
+        // Config is passed byref, so use the full var name
+        $save_prep_function($node->win_conditions[$plugin_key]);
+      }
+    }
     // If this win condition is NOT enabled, remove it from the array
-    if (!($config['enable'] > 0)) {
+    else {
       unset($node->win_conditions[$plugin_key]);
     }
   }
@@ -555,7 +563,8 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       
       // If this test has a winner, send them there
       if (($winner_webform_id = _webform_ab_has_winner_already($node)) > 0) {
-        // Save it to the $_SESSION so that it will be logged as a hit to the form
+        // Save it to the $_SESSION so that it will be logged as a hit to the
+        // form
         $_SESSION['webform_ab']['webform_for_tests'][$node->nid] = $winner_webform_id;
         drupal_goto('node/' . $winner_webform_id, $query_vars);
       }
