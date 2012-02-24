@@ -5,6 +5,7 @@
  * Provide a Webform A/B Test win condition: Total number of conversions
  */
 
+// Plugin details
 $plugin = array(
   'title' => t('Total Conversions'),
   'description' => t('This many conversions must be made by a webform before it is declared the winner.'),
@@ -16,8 +17,12 @@ $plugin = array(
 
 /**
  * Return the config options form for this win condition
+ * 
+ * @param $current_config
+ *   Array containing current config options (if set). Default values for form
+ *   elements should come from here.
  */
-function webform_ab_total_conversions_config() {
+function webform_ab_total_conversions_config($current_config) {
   $form = array();
   $form['conversions'] = array(
     '#type' => 'textfield',
@@ -25,6 +30,7 @@ function webform_ab_total_conversions_config() {
     '#description' => t(''),
     '#size' => 10,
     '#maxlength' => 255,
+    '#default_value' => isset($current_config['conversions']) ? $current_config['conversions'] : '',
   );
   return $form;
 }

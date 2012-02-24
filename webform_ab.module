@@ -248,6 +248,7 @@ function webform_ab_form(&$node, $form_state) {
     $form['win_conditions'][$plugin_key]['enable'] = array(
       '#type' => 'checkbox',
       '#title' => $plugin['title'],
+      '#default_value' => isset($node->win_conditions[$plugin_key]),
     );
     // If this win condition offers more options (as most do), add the form
     // elements for those
@@ -278,8 +279,9 @@ function webform_ab_form(&$node, $form_state) {
         '#suffix' => '</div>',
       );
       
-      // Get the config form fields and merge them into the fieldset
-      $config_form = $config_form_function();
+      // Get the config form fields for this plugin
+      $config_form = $config_form_function($node->win_conditions[$plugin_key]['options']);
+      // ...and merge them into the fieldset
       $form['win_conditions'][$plugin_key]['options'] = array_merge($form['win_conditions'][$plugin_key]['options'], $config_form);
     }
   }

@@ -5,7 +5,7 @@
  * Provide a Webform A/B Test win condition: Minimum number of hits
  */
 
-
+// Plugin details
 $plugin = array(
   'title' => t('Minimum Hits'),
   'description' => t('A webform must be visited by at least this many users before it can be declared the winner.'),
@@ -16,8 +16,12 @@ $plugin = array(
 
 /**
  * Return the config options form for this win condition
+ * 
+ * @param $current_config
+ *   Array containing current config options (if set). Default values for form
+ *   elements should come from here.
  */
-function webform_ab_minimum_hits_config() {
+function webform_ab_minimum_hits_config($current_config) {
   $form = array();
   $form['hits'] = array(
     '#type' => 'textfield',
@@ -25,6 +29,7 @@ function webform_ab_minimum_hits_config() {
     '#description' => t('The minimum number of hits.'),
     '#size' => 10,
     '#maxlength' => 255,
+    '#default_value' => isset($current_config['hits']) ? $current_config['hits'] : '',
   );
   return $form;
 }

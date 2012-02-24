@@ -6,7 +6,7 @@
  * conversions
  */
 
-
+ // Plugin details
 $plugin = array(
   'title' => t('Conversion Percentage'),
   'description' => t('A webform must reach this percentage of conversions to be declared the winner.'),
@@ -18,8 +18,12 @@ $plugin = array(
 
 /**
  * Return the config options form for this win condition
+ * 
+ * @param $current_config
+ *   Array containing current config options (if set). Default values for form
+ *   elements should come from here.
  */
-function webform_ab_percent_conversions_config() {
+function webform_ab_percent_conversions_config($current_config) {
   $form = array();
   $form['percentage'] = array(
     '#type' => 'textfield',
@@ -27,6 +31,7 @@ function webform_ab_percent_conversions_config() {
     '#description' => t('Percentage of hits that become conversions. Enter either as 25% or 0.25.'),
     '#size' => 10,
     '#maxlength' => 255,
+    '#default_value' => isset($current_config['percentage']) ? $current_config['percentage'] : '',
   );
   return $form;
 }
