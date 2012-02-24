@@ -63,7 +63,7 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
 
 /**
  * Return a summary of the plugin config, for listing on the admin view of a
- * Webform A/B tets node
+ * Webform A/B test node
  */
 function webform_ab_percent_conversions_config_summary($config) {
   if ($config['percentage'] > 0) {

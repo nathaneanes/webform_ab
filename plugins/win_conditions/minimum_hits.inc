@@ -47,7 +47,7 @@ function webform_ab_minimum_hits_config_validate($config, $field_name_prefix) {
 
 /**
  * Return a summary of the plugin config, for listing on the admin view of a
- * Webform A/B tets node
+ * Webform A/B test node
  */
 function webform_ab_minimum_hits_config_summary($config) {
   return $config['hits'];
