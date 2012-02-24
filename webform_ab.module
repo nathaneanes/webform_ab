@@ -380,7 +380,7 @@ function webform_ab_update($node, $is_insert = FALSE) {
   );
   
   if($is_insert) {
-    $sql = "INSERT INTO {webform_ab} (nid, webform_types, public_teaser) VALUES(%d, '%s', '%s', '%s', '%s', '%s', '%s')";
+    $sql = "INSERT INTO {webform_ab} (nid, webform_types, public_teaser) VALUES(%d, '%s', '%s')";
   }
   else {
     $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', public_teaser='%s' WHERE nid=%d";
@@ -724,6 +724,9 @@ function webform_ab_webform_submit($form, &$form_state) {
     foreach ($conversion_check_results as $val) {
       if ($val === TRUE) {
         db_query("INSERT INTO {webform_ab_conversion} (test_nid, webform_nid, sid) VALUES(%d, %d, %d)", array($form_state['values']['test_nid'], $form_state['values']['webform_nid'], $form_state['values']['details']['sid']));
+        
+        // Allow other modules to act on webform submission
+        module_invoke_all('webform_ab_conversion', $test_node, $form_state['values']);
         break;
       }
     }

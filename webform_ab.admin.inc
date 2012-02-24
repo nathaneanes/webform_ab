@@ -331,6 +331,9 @@ function webform_ab_clear_test_data_confirm_submit($form, &$form_state) {
   db_query('DELETE FROM {webform_ab_hits} WHERE test_nid = %d', array($form['#test_nid']));
   db_query('UPDATE {webform_ab_forms} SET status = %d, win_time = %d WHERE test_nid = %d', array(WEBFORM_AB_WEBFORM_STATUS_ACTIVE, 0, $form['#test_nid']));
   
+  // Notify other modules that may have test data to wipe
+  module_invoke_all('webform_ab_reset_data', $form['#test_nid']);
+
   drupal_set_message(t('The data has been cleared.'));
 
   $form_state['redirect'] = 'node/' . $form['#test_nid'] . '/reports';

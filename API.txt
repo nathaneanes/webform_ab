@@ -12,3 +12,7 @@ hook_webform_ab_check_win_condition($win_type, $webforms_to_check, $node)
 
 hook_webform_ab_validate_conversion($webform_types, $test_node, $form_state)
     Check if the form submission should be counted as a conversion. Only run the check if $webform_types is a value supplied by the current module.
+
+hook_webform_ab_reset_data($test_nid)
+
+hook_webform_ab_conversion($test_node, $submitted_values)
