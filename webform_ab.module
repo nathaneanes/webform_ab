@@ -12,7 +12,6 @@
  *    Fields were in place, but commented out: removed in ba3e048
  *  Option to start the test and lock down the edits
  *  Permissions: declare winner? Start/end test?
- *  Define daily cron to send summaries
  *  Further test permission settings
  */
 
@@ -407,7 +406,7 @@ function _webform_ab_prep_node_for_save(&$node) {
       $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
       if($save_prep_function = ctools_plugin_get_function($plugin, 'prep for save')) {
         // Config is passed byref, so use the full var name
-        $save_prep_function($node->win_conditions[$plugin_key]);
+        $save_prep_function($node->win_conditions[$plugin_key]['options']);
       }
     }
     // If this win condition is NOT enabled, remove it from the array
@@ -538,7 +537,23 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       '#weight' => 10,
     );
     
-    // @todo: re-add display of winning conditions
+    // List the win conditions in use on this test
+    foreach ($node->win_conditions as $plugin_key => $plugin_config) {
+      $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
+      // Get the summary from the plugin
+      if($summary_function = ctools_plugin_get_function($plugin, 'config summary')) {
+        $summary = $summary_function($plugin_config['options']);
+      }
+      else {
+        $summary = '';
+      }
+      $node->content['win_conditions'][$plugin_key] = array(
+        '#type' => 'item',
+        '#title' => $plugin['title'],
+        '#description' => $plugin['description'],
+        '#value' => $summary,
+      );
+    }
 
     return $node;
   }
@@ -778,7 +793,7 @@ function _webform_ab_check_for_win($test_nid) {
     // Check each included webform
     foreach ($node->included_webforms as $webform_nid => $details) {
       // Check each condition in use on the A/B Test node
-      foreach ($node->win_conditions as $plugin_key => $plugin_options) {
+      foreach ($node->win_conditions as $plugin_key => $plugin_config) {
         // Load the plugin details from
         $plugin = $win_conditions[$plugin_key];
         if($win_check = ctools_plugin_get_function($plugin, 'check win criteria')) {
@@ -786,14 +801,15 @@ function _webform_ab_check_for_win($test_nid) {
           $plugin_config = $node->win_conditions[$plugin_key];
           // Run the win check on this win condition
           if(!$win_check($plugin_config['options'], $details)) {
-            // Did NOT pass this conditon, so don't bother checking the rest
+            // Did NOT pass this conditon, so don't bother checking the rest:
+            // skip out of both foreach loops and check the next webform
             continue 2;
           }
         }
       }
       
-      // If processing gets this far, the form passed all win checks. Save this
-      // form as the winner, log the win, etc.
+      // If processing gets this far in the outer loop, the form passed all win
+      // checks. Save this form as the winner, log the win, etc.
       _webform_ab_process_winner($node, $details);
     }
   }

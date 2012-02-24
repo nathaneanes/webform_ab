@@ -11,6 +11,7 @@ $plugin = array(
   'description' => t('This many conversions must be made by a webform before it is declared the winner.'),
   'config form' => 'webform_ab_total_conversions_config',
   'config validation form' => 'webform_ab_total_conversions_config_validate',
+  'config summary' => 'webform_ab_total_conversions_config_summary',
   'check win criteria' => 'webform_ab_total_conversions_check_win',
 );
 
@@ -44,6 +45,15 @@ function webform_ab_total_conversions_config_validate($config, $field_name_prefi
     form_set_error($field_name_prefix . 'conversions', t('Please enter an integer for Number of Conversions win condition.'));
   }
   return TRUE;
+}
+
+
+/**
+ * Return a summary of the plugin config, for listing on the admin view of a
+ * Webform A/B tets node
+ */
+function webform_ab_total_conversions_config_summary($config) {
+  return $config['conversions'];
 }
 
 

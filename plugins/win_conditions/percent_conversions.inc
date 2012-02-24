@@ -12,6 +12,7 @@ $plugin = array(
   'description' => t('A webform must reach this percentage of conversions to be declared the winner.'),
   'config form' => 'webform_ab_percent_conversions_config',
   'config validation form' => 'webform_ab_percent_conversions_config_validate',
+  'config summary' => 'webform_ab_percent_conversions_config_summary',
   'check win criteria' => 'webform_ab_percent_conversions_check_win',
   'prep for save' => 'webform_ab_percent_conversions_prep_save',
 );
@@ -31,7 +32,7 @@ function webform_ab_percent_conversions_config($current_config) {
     '#description' => t('Percentage of hits that become conversions. Enter either as 25% or 0.25.'),
     '#size' => 10,
     '#maxlength' => 255,
-    '#default_value' => isset($current_config['percentage']) ? $current_config['percentage'] : '',
+    '#default_value' => isset($current_config['percentage']) ? ($current_config['percentage'] * 100) . '%' : '',
   );
   return $form;
 }
@@ -61,15 +62,25 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
 }
 
 /**
+ * Return a summary of the plugin config, for listing on the admin view of a
+ * Webform A/B tets node
+ */
+function webform_ab_percent_conversions_config_summary($config) {
+  if ($config['percentage'] > 0) {
+    return ($config['percentage'] * 100) . '%';
+  }
+}
+
+/**
  * Prep the given configuration for saving to the DB.
  * For conversion percentage, save the percentage as a decimal between 0 and 1
  */
 function webform_ab_percent_conversions_prep_save(&$config) {
-  if (substr(trim($config['options']['percentage']), -1) == '%') {
+  if (substr(trim($config['percentage']), -1) == '%') {
     // Strip the percent sign
-    $number = rtrim(trim($config['options']['percentage']), '%');
+    $number = rtrim(trim($config['percentage']), '%');
     // Convert to a decimal
-    $config['options']['percentage'] = $number / 100;
+    $config['percentage'] = $number / 100;
   }
 }
 

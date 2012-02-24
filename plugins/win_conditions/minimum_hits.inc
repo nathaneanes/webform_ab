@@ -11,6 +11,7 @@ $plugin = array(
   'description' => t('A webform must be visited by at least this many users before it can be declared the winner.'),
   'config form' => 'webform_ab_minimum_hits_config',
   'config validation form' => 'webform_ab_minimum_hits_config_validate',
+  'config summary' => 'webform_ab_minimum_hits_config_summary',
   'check win criteria' => 'webform_ab_minimum_hits_check_win',
 );
 
@@ -41,6 +42,15 @@ function webform_ab_minimum_hits_config_validate($config, $field_name_prefix) {
   if (!ctype_digit($config['hits']) || !($config['hits'] > 0)) {
     form_set_error($field_name_prefix . 'hits', t('Please enter an integer for Minimum Hits win condition.'));
   }
+}
+
+
+/**
+ * Return a summary of the plugin config, for listing on the admin view of a
+ * Webform A/B tets node
+ */
+function webform_ab_minimum_hits_config_summary($config) {
+  return $config['hits'];
 }
 
 
