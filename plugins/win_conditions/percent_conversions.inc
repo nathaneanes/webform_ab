@@ -13,6 +13,7 @@ $plugin = array(
   'config form' => 'webform_ab_percent_conversions_config',
   'config validation form' => 'webform_ab_percent_conversions_config_validate',
   'check win criteria' => 'webform_ab_percent_conversions_check_win',
+  'prep for save' => 'webform_ab_percent_conversions_prep_save',
 );
 
 /**
@@ -43,7 +44,7 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
   // See if the string ends with a percentage
   elseif (substr(trim($value), -1) == '%') {
     // Strip the percent sign
-    $number = substr($value, 0, strlen($value) - 1);
+    $number = rtrim(trim($value), '%');
     if (!($number > 0 && $number <= 100)) {
       form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win conditoion. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
     }
@@ -51,6 +52,19 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
   // Not a number
   else {
     form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win conditoion. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
+  }
+}
+
+/**
+ * Prep the given configuration for saving to the DB.
+ * For conversion percentage, save the percentage as a decimal between 0 and 1
+ */
+function webform_ab_percent_conversions_prep_save(&$config) {
+  if (substr(trim($config['options']['percentage']), -1) == '%') {
+    // Strip the percent sign
+    $number = rtrim(trim($config['options']['percentage']), '%');
+    // Convert to a decimal
+    $config['options']['percentage'] = $number / 100;
   }
 }
 
@@ -64,5 +78,9 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
  *   Array of info about the webform to check.
  */
 function webform_ab_percent_conversions_check_win($config, $webform_details) {
+  if ($webform_details['hits'] > 0) {
+    $percentage = $webform_details['conversions'] / $webform_details['hits'];
+    return $percentage >= $config['percentage'];
+  }
   return FALSE;
 }
