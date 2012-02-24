@@ -279,7 +279,7 @@ function webform_ab_form(&$node, $form_state) {
       );
       
       // Get the config form fields for this plugin
-      $config_form = $config_form_function($node->win_conditions[$plugin_key]['options']);
+      $config_form = $config_form_function($node->win_conditions[$plugin_key]);
       // ...and merge them into the fieldset
       $form['win_conditions'][$plugin_key]['options'] = array_merge($form['win_conditions'][$plugin_key]['options'], $config_form);
     }
@@ -306,7 +306,10 @@ function webform_ab_validate($node, &$form) {
         $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
         if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
           // Call the validate function. Pass in a field name prefix for use by
-          // form_set_error in the validation function
+          // form_set_error in the validation function.
+          // Note that the config options for the plugin are still in the
+          // 'options' sub-array during this validation step. They are merged
+          // up a level in the hook_nodeapi() presave
           $field_name_prefix = 'win_conditions][' . $plugin_key . '][options][';
           $config_validation_function($config['options'], $field_name_prefix);
         }
@@ -319,6 +322,41 @@ function webform_ab_validate($node, &$form) {
     form_set_error('win_conditions', t('Please select at least one winning condition for the test.'));
   }
 }
+
+
+/**
+ * Implementation of hook_nodeapi().
+ * Prepare webform_ab nodes for saving
+ */
+function webform_ab_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
+  if ($node->type == 'webform_ab' && $op == 'presave') {
+    if (!is_array($node->win_conditions)) {
+      $node->win_conditions = array();
+    }
+    foreach ($node->win_conditions as $plugin_key => $config) {
+      // For enabled plugins, check if they have a save prep function
+      if ($config['enable'] > 0) {
+        // The options for each plugin come in as a sub-array ('options'),
+        // which we actually want a level up
+        if (is_array($node->win_conditions[$plugin_key]['options'])) {
+          $node->win_conditions[$plugin_key] = $node->win_conditions[$plugin_key]['options'];
+        }
+        
+        // Load the plugin and see if it has a save prep function
+        $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
+        if($save_prep_function = ctools_plugin_get_function($plugin, 'prep for save')) {
+          // Config is passed byref, so use the full var name
+          $save_prep_function($node->win_conditions[$plugin_key]);
+        }
+      }
+      // If this win condition is NOT enabled, remove it from the array
+      else {
+        unset($node->win_conditions[$plugin_key]);
+      }
+    }
+  }
+}
+
 
 
 /**
@@ -335,23 +373,17 @@ function webform_ab_insert($node) {
  * Update existing or insert new Webform A/B Test nodes
  */
 function webform_ab_update($node, $is_insert = FALSE) {
-  _webform_ab_prep_node_for_save($node);
-  
   $replacement_values = array(
     $node->nid,
     $node->webform_types,
-    $node->daily_notification_email,
-    $node->daily_notification_sms,
-    $node->win_notification_email,
-    $node->win_notification_sms,
     $node->public_teaser
   );
   
   if($is_insert) {
-    $sql = "INSERT INTO {webform_ab} (nid, webform_types, daily_notification_email, daily_notification_sms, win_notification_email, win_notification_sms, public_teaser) VALUES(%d, '%s', '%s', '%s', '%s', '%s', '%s')";
+    $sql = "INSERT INTO {webform_ab} (nid, webform_types, public_teaser) VALUES(%d, '%s', '%s', '%s', '%s', '%s', '%s')";
   }
   else {
-    $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', daily_notification_email='%s', daily_notification_sms='%s', win_notification_email='%s', win_notification_sms='%s', public_teaser='%s' WHERE nid=%d";
+    $sql = "UPDATE {webform_ab} SET nid=%d, webform_types='%s', public_teaser='%s' WHERE nid=%d";
     $replacement_values[] = $node->nid;
   }
   db_query($sql, $replacement_values);
@@ -361,58 +393,14 @@ function webform_ab_update($node, $is_insert = FALSE) {
   // Remove old records first
   db_query('DELETE FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
   // $node->win_conditions has been prepped for saving already in
-  // _webform_ab_prep_node_for_save()
+  // the hook_nodeapi() implementation
   foreach ($node->win_conditions as $plugin_key => $config) {
     $row = array(
       'test_nid' => $node->nid,
       'plugin_key' => $plugin_key,
-      'options' => $config['options'],
+      'options' => $config,
     );
     drupal_write_record('webform_ab_win_conditions', $row);
-  }
-}
-
-
-/**
- * Clean up fields before saving them to the DB
- */
-function _webform_ab_prep_node_for_save(&$node) {
-  // Remove any spaces from lists of daily summary e-mail addresses
-  if(trim($node->daily_notification_email) != '') {
-    $addresses = explode(',', $node->daily_notification_email);
-    $fixed = array();
-    foreach ($addresses as $address) {
-      $fixed[] = trim($address);
-    }
-    $node->daily_notification_email = implode(',', $fixed);
-  }
-  
-  // Remove any spaces from lists of win notice e-mail addresses
-  if(trim($node->win_notification_email) != '') {
-    $addresses = explode(',', $node->win_notification_email);
-    $fixed = array();
-    foreach ($addresses as $address) {
-      $fixed[] = trim($address);
-    }
-    $node->win_notification_email = implode(',', $fixed);
-  }
-  
-  if (!is_array($node->win_conditions)) {
-    $node->win_conditions = array();
-  }
-  foreach ($node->win_conditions as $plugin_key => $config) {
-    // For enabled plugins, check if they have a save prep function
-    if ($config['enable'] > 0) {
-      $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
-      if($save_prep_function = ctools_plugin_get_function($plugin, 'prep for save')) {
-        // Config is passed byref, so use the full var name
-        $save_prep_function($node->win_conditions[$plugin_key]['options']);
-      }
-    }
-    // If this win condition is NOT enabled, remove it from the array
-    else {
-      unset($node->win_conditions[$plugin_key]);
-    }
   }
 }
 
@@ -427,10 +415,7 @@ function webform_ab_load(&$node) {
   $result = db_query('SELECT * FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
   $load->win_conditions = array();
   while ($row = db_fetch_object($result)) {
-    $load->win_conditions[$row->plugin_key] = array(
-      'enable' => 1,
-      'options' => unserialize($row->options),
-    );
+    $load->win_conditions[$row->plugin_key] = unserialize($row->options);
   }
     
   // Load the included webforms and info about them
@@ -542,7 +527,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
       // Get the summary from the plugin
       if($summary_function = ctools_plugin_get_function($plugin, 'config summary')) {
-        $summary = $summary_function($plugin_config['options']);
+        $summary = $summary_function($plugin_config);
       }
       else {
         $summary = '';
@@ -800,7 +785,7 @@ function _webform_ab_check_for_win($test_nid) {
           // Load the config for this plugin from the node
           $plugin_config = $node->win_conditions[$plugin_key];
           // Run the win check on this win condition
-          if(!$win_check($plugin_config['options'], $details)) {
+          if(!$win_check($plugin_config, $details)) {
             // Did NOT pass this conditon, so don't bother checking the rest:
             // skip out of both foreach loops and check the next webform
             continue 2;
