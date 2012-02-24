@@ -56,7 +56,13 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
 
 /**
  * Check if the given Webform A/B Test node has a winner
+ * 
+ * @param $config
+ *   Array of config options for this plugin for the Webform A/B test being
+ *   checked for a win. In this case, the array will contain 'percentage'
+ * @param $webform_details
+ *   Array of info about the webform to check.
  */
-function webform_ab_percent_conversions_check_win($test_node) {
+function webform_ab_percent_conversions_check_win($config, $webform_details) {
   return FALSE;
 }

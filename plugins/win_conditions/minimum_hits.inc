@@ -38,9 +38,16 @@ function webform_ab_minimum_hits_config_validate($config, $field_name_prefix) {
   }
 }
 
+
 /**
  * Check if the given Webform A/B Test node has a winner
+ * 
+ * @param $config
+ *   Array of config options for this plugin for the Webform A/B test being
+ *   checked for a win. In this case, the array will contain 'hits'
+ * @param $webform_details
+ *   Array of info about the webform to check.
  */
-function webform_ab_minimum_hits_check_win($test_node) {
-  return FALSE;
+function webform_ab_minimum_hits_check_win($config, $webform_details) {
+  return ($webform_details['hits'] >= $config['hits']);
 }
