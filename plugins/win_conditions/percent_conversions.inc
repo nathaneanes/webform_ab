@@ -52,12 +52,12 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
     // Strip the percent sign
     $number = rtrim(trim($value), '%');
     if (!($number > 0 && $number <= 100)) {
-      form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win conditoion. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
+      form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win condition. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
     }
   }
   // Not a number
   else {
-    form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win conditoion. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
+    form_set_error($field_name_prefix . 'percentage', t('Please enter a valid percentage for Conversion Percentage win condition. You can either enter it as a percentage (e.g., 45%) or a decimal value (e.g., 0.45).'));
   }
 }
 
