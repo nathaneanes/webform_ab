@@ -425,7 +425,7 @@ function webform_ab_load(&$node) {
     LEFT JOIN {webform_ab_hits} hits ON hits.test_nid = f.test_nid AND hits.webform_nid = f.webform_nid
     LEFT JOIN  {webform_ab_conversion} con ON con.test_nid = f.test_nid AND con.webform_nid = f.webform_nid
     WHERE f.test_nid = %d
-    GROUP BY f.test_nid, f.webform_nid
+    GROUP BY f.test_nid, f.webform_nid, f.status, n.title
     ORDER BY f.status, n.title', $node->nid);
   $included_webforms = array();
   while ($row = db_fetch_array($result)) {
