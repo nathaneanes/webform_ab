@@ -774,16 +774,12 @@ function _webform_ab_check_for_win($test_nid) {
      */
     $node = node_load($test_nid, NULL, TRUE);
     
-    // Get all possible win condition plugins. Only those in use on the node
-    // will be checked
-    $win_conditions = _webform_ab_get_win_condition_plugins();
-
     // Check each included webform
     foreach ($node->included_webforms as $webform_nid => $details) {
       // Check each condition in use on the A/B Test node
       foreach ($node->win_conditions as $plugin_key => $plugin_config) {
         // Load the plugin details from
-        $plugin = $win_conditions[$plugin_key];
+        $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
         if($win_check = ctools_plugin_get_function($plugin, 'check win criteria')) {
           // Load the config for this plugin from the node
           $plugin_config = $node->win_conditions[$plugin_key];
