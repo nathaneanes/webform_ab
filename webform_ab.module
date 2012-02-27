@@ -784,7 +784,7 @@ function _webform_ab_check_for_win($test_nid) {
           // Load the config for this plugin from the node
           $plugin_config = $node->win_conditions[$plugin_key];
           // Run the win check on this win condition
-          if(!$win_check($plugin_config, $details)) {
+          if(!$win_check($plugin_config, $details, $node)) {
             // Did NOT pass this conditon, so don't bother checking the rest:
             // skip out of both foreach loops and check the next webform
             continue 2;

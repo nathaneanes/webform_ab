@@ -62,7 +62,9 @@ function webform_ab_minimum_hits_config_summary($config) {
  *   checked for a win. In this case, the array will contain 'hits'
  * @param $webform_details
  *   Array of info about the webform to check.
+ * @param $test_node
+ *   Webform A/B Test node
  */
-function webform_ab_minimum_hits_check_win($config, $webform_details) {
+function webform_ab_minimum_hits_check_win($config, $webform_details, $test_node) {
   return ($webform_details['hits'] >= $config['hits']);
 }

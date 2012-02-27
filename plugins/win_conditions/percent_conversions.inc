@@ -92,8 +92,10 @@ function webform_ab_percent_conversions_prep_save(&$config) {
  *   checked for a win. In this case, the array will contain 'percentage'
  * @param $webform_details
  *   Array of info about the webform to check.
+ * @param $test_node
+ *   Webform A/B Test node
  */
-function webform_ab_percent_conversions_check_win($config, $webform_details) {
+function webform_ab_percent_conversions_check_win($config, $webform_details, $test_node) {
   if ($webform_details['hits'] > 0) {
     $percentage = $webform_details['conversions'] / $webform_details['hits'];
     return $percentage >= $config['percentage'];
