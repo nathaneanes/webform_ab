@@ -2,21 +2,21 @@
 
 /**
  * @file
- * Provide a Webform A/B Test win condition: Minimum number of hits
+ * Provide a Webform A/B Test win threshold: Minimum number of hits
  */
 
 // Plugin details
 $plugin = array(
   'title' => t('Minimum Hits'),
-  'description' => t('A webform must be visited by at least this many users before it can be declared the winner.'),
+  'description' => t('All webforms must be visited by at least this many users before the win conditions are checked.'),
   'config form' => 'webform_ab_minimum_hits_config',
   'config validation form' => 'webform_ab_minimum_hits_config_validate',
   'config summary' => 'webform_ab_minimum_hits_config_summary',
-  'check win criteria' => 'webform_ab_minimum_hits_check_win',
+  'check win threshold' => 'webform_ab_minimum_hits_check_threshold',
 );
 
 /**
- * Return the config options form for this win condition
+ * Return the config options form for this win threshold
  * 
  * @param $current_config
  *   Array containing current config options (if set). Default values for form
@@ -40,7 +40,7 @@ function webform_ab_minimum_hits_config($current_config) {
  */
 function webform_ab_minimum_hits_config_validate($config, $field_name_prefix) {
   if (!ctype_digit($config['hits']) || !($config['hits'] > 0)) {
-    form_set_error($field_name_prefix . 'hits', t('Please enter an integer for Minimum Hits win condition.'));
+    form_set_error($field_name_prefix . 'hits', t('Please enter an integer for Minimum Hits win threshold.'));
   }
 }
 
@@ -65,6 +65,6 @@ function webform_ab_minimum_hits_config_summary($config) {
  * @param $test_node
  *   Webform A/B Test node
  */
-function webform_ab_minimum_hits_check_win($config, $webform_details, $test_node) {
+function webform_ab_minimum_hits_check_threshold($config, $webform_details, $test_node) {
   return ($webform_details['hits'] >= $config['hits']);
 }

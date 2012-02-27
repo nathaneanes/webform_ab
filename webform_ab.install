@@ -211,15 +211,10 @@ function webform_ab_schema() {
     ),
   );
   
-  // Win condition plugin config
-  $schema['webform_ab_win_conditions'] = array(
-    'description' => t('Win condition plugin config'),
+  // Threshold plugin config
+  $schema['webform_ab_win_thresholds'] = array(
+    'description' => t('Win theshold plugin config'),
     'fields' => array(
-      'id' => array(
-        'description' => t('Row id'),
-        'type' => 'serial',
-        'not null' => TRUE,
-      ),
       'test_nid' => array(
         'description' => t('Node ID for the Webform A/B test node'),
         'type' => 'int',
@@ -239,10 +234,42 @@ function webform_ab_schema() {
         'not null' => FALSE,
       ),
     ),
-    'primary key' => array('id'),
+    'indexes' => array(
+      'test_nid' => array('test_nid'),
+      'plugin_key' => array('plugin_key')
+    ),
+    'primary key' => array('test_nid', 'plugin_key'),
   );
   
-  
+  // Win condition plugin config
+  $schema['webform_ab_win_conditions'] = array(
+    'description' => t('Win condition plugin config'),
+    'fields' => array(
+      'test_nid' => array(
+        'description' => t('Node ID for the Webform A/B test node'),
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'plugin_key' => array(
+        'description' => t('Key for plugin'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'options' => array(
+        'description' => t('Serialized options'),
+        'serialize' => TRUE,
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+    ),
+    'indexes' => array(
+      'test_nid' => array('test_nid'),
+      'plugin_key' => array('plugin_key')
+    ),
+    'primary key' => array('test_nid', 'plugin_key'),
+  );
   
   return $schema;
 }

@@ -230,6 +230,66 @@ function webform_ab_form(&$node, $form_state) {
     '#required' => TRUE,
   );
   
+  
+  
+  
+  $form['win_thresholds'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Winning Thresholds'),
+    '#description' => t('Before any of the win conditions are checked, all forms included in the test must first meet these lower thresholds.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#tree' => TRUE,
+  );
+
+  // Get win condition plugins and show them as options
+  $win_thresholds = _webform_ab_get_win_threshold_plugins();
+
+  foreach ($win_thresholds as $plugin_key => $plugin) {
+    // Add a checkbox to enable this win threshold
+    $form['win_thresholds'][$plugin_key]['enable'] = array(
+      '#type' => 'checkbox',
+      '#title' => $plugin['title'],
+      '#default_value' => isset($node->win_thresholds[$plugin_key]),
+    );
+    // If this win threshold offers more options (as most do), add the form
+    // elements for those
+    if($config_form_function = ctools_plugin_get_function($plugin, 'config form')) {
+      // Decide on an ID for the fieldset wrapping the config options
+      // CTools JS seems to make assumptions about what this should be, so
+      // don't change it
+      $options_div_id = str_replace('_', '-', 'edit-win-thresholds-' . $plugin_key . '-options');
+      // Determine the selector for the Enable checkbox
+      $enable_checkbox_id = str_replace('_', '-', 'edit-win-thresholds-' . $plugin_key . '-enable');
+      
+      // Create a fieldset for the config options and make it dependent on the
+      // Enable checkbox for this win condition
+      $form['win_thresholds'][$plugin_key]['options'] = array(
+        '#type' => 'fieldset',
+        '#title' => $plugin['title'] . ' ' . t('Options'),
+        '#collapsible' => FALSE,
+        // Need to set #input to true for dependent fields to work
+        '#input' => TRUE,
+        // Need an ID to use for hiding
+        '#attributes' => array('id' => $options_div_id),
+        // Add dependent field processing and rule
+        '#process' => array('ctools_dependent_process'),
+        '#dependency' => array($enable_checkbox_id => array('1')),
+        // Need to wrap the fieldset in a div because the parent element is the
+        // one hidden (so it will hide this div)
+        '#prefix' => '<div>',
+        '#suffix' => '</div>',
+      );
+      
+      // Get the config form fields for this plugin
+      $config_form = $config_form_function($node->win_thresholds[$plugin_key]);
+      // ...and merge them into the fieldset
+      $form['win_thresholds'][$plugin_key]['options'] = array_merge($form['win_thresholds'][$plugin_key]['options'], $config_form);
+    }
+  }
+
+
+
   $form['win_conditions'] = array(
     '#type' => 'fieldset',
     '#title' => t('Winning Conditions'),
@@ -294,6 +354,35 @@ function webform_ab_form(&$node, $form_state) {
  * Check values from the node edit form
  */
 function webform_ab_validate($node, &$form) {
+  // Validate the winning thresholds
+  // First: make sure at least one is selected
+  $has_win_threshold = FALSE;
+  if (is_array($node->win_thresholds)) {
+    foreach ($node->win_thresholds as $plugin_key => $config) {
+      // If this win condition is enabled, check if the plugin provides a
+      // validation method that should be called
+      if ($config['enable'] > 0) {
+        $has_win_threshold = TRUE;
+        $plugin = _webform_ab_get_win_threshold_plugin($plugin_key);
+        if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
+          // Call the validate function. Pass in a field name prefix for use by
+          // form_set_error in the validation function.
+          // Note that the config options for the plugin are still in the
+          // 'options' sub-array during this validation step. They are merged
+          // up a level in the hook_nodeapi() presave
+          $field_name_prefix = 'win_thresholds][' . $plugin_key . '][options][';
+          $config_validation_function($config['options'], $field_name_prefix);
+        }
+      }
+    }
+  }
+  
+  // Throw an error if they don't have ANY winning threshold chosen
+  if (!$has_win_threshold) {
+    form_set_error('win_thresholds', t('Please select at least one winning threshold for the test.'));
+  }
+  
+  
   // Validate the winning conditions
   // First: make sure at least one is selected
   $has_win_condition = FALSE;
@@ -330,6 +419,34 @@ function webform_ab_validate($node, &$form) {
  */
 function webform_ab_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
   if ($node->type == 'webform_ab' && $op == 'presave') {
+    // Prep win thresholds
+    if (!is_array($node->win_thresholds)) {
+      $node->win_thresholds = array();
+    }
+    foreach ($node->win_thresholds as $plugin_key => $config) {
+      // For enabled plugins, check if they have a save prep function
+      if ($config['enable'] > 0) {
+        // The options for each plugin come in as a sub-array ('options'),
+        // which we actually want a level up
+        if (is_array($node->win_thresholds[$plugin_key]['options'])) {
+          $node->win_thresholds[$plugin_key] = $node->win_thresholds[$plugin_key]['options'];
+        }
+        
+        // Load the plugin and see if it has a save prep function
+        $plugin = _webform_ab_get_win_threshold_plugin($plugin_key);
+        if($save_prep_function = ctools_plugin_get_function($plugin, 'prep for save')) {
+          // Config is passed byref, so use the full var name
+          $save_prep_function($node->win_thresholds[$plugin_key]);
+        }
+      }
+      // If this win condition is NOT enabled, remove it from the array
+      else {
+        unset($node->win_thresholds[$plugin_key]);
+      }
+    }
+
+
+    // Prep win conditions
     if (!is_array($node->win_conditions)) {
       $node->win_conditions = array();
     }
@@ -389,6 +506,22 @@ function webform_ab_update($node, $is_insert = FALSE) {
   db_query($sql, $replacement_values);
   
   
+  
+  // Save win threshold info
+  // Remove old records first
+  db_query('DELETE FROM {webform_ab_win_thresholds} WHERE test_nid=%d', $node->nid);
+  // $node->win_thresholds has been prepped for saving already in
+  // the hook_nodeapi() implementation
+  foreach ($node->win_thresholds as $plugin_key => $config) {
+    $row = array(
+      'test_nid' => $node->nid,
+      'plugin_key' => $plugin_key,
+      'options' => $config,
+    );
+    drupal_write_record('webform_ab_win_thresholds', $row);
+  }  
+  
+  
   // Save win condition info
   // Remove old records first
   db_query('DELETE FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
@@ -411,6 +544,13 @@ function webform_ab_update($node, $is_insert = FALSE) {
 function webform_ab_load(&$node) {
   $load = db_fetch_object(db_query('SELECT * FROM {webform_ab} WHERE nid = %d', $node->nid));
   
+  // Load the winning thresholds for this test
+  $result = db_query('SELECT * FROM {webform_ab_win_thresholds} WHERE test_nid=%d', $node->nid);
+  $load->win_thresholds = array();
+  while ($row = db_fetch_object($result)) {
+    $load->win_thresholds[$row->plugin_key] = unserialize($row->options);
+  }
+    
   // Load the winning conditions for this test
   $result = db_query('SELECT * FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
   $load->win_conditions = array();
@@ -447,6 +587,7 @@ function webform_ab_delete(&$node) {
   db_query('DELETE FROM {webform_ab_conversion} WHERE test_nid=%d', $node->nid);
   db_query('DELETE FROM {webform_ab_forms} WHERE test_nid=%d', $node->nid);
   db_query('DELETE FROM {webform_ab_hits} WHERE test_nid=%d', $node->nid);
+  db_query('DELETE FROM {webform_ab_win_thresholds} WHERE test_nid=%d', $node->nid);
   db_query('DELETE FROM {webform_ab_win_conditions} WHERE test_nid=%d', $node->nid);
 }
 
@@ -513,13 +654,40 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       '#weight' => 2,
     );
     
+    $node->content['win_thresholds'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Winning Thresholds'),
+      '#description' => t('Before any of the win conditions are checked, all forms included in the test must first meet these lower thresholds.'),
+      '#collapsible' => FALSE,
+      '#collapsed' => FALSE,
+      '#weight' => 10,
+    );
+    
+    // List the win conditions in use on this test
+    foreach ($node->win_thresholds as $plugin_key => $plugin_config) {
+      $plugin = _webform_ab_get_win_threshold_plugin($plugin_key);
+      // Get the summary from the plugin
+      if($summary_function = ctools_plugin_get_function($plugin, 'config summary')) {
+        $summary = $summary_function($plugin_config);
+      }
+      else {
+        $summary = '';
+      }
+      $node->content['win_thresholds'][$plugin_key] = array(
+        '#type' => 'item',
+        '#title' => $plugin['title'],
+        '#description' => $plugin['description'],
+        '#value' => $summary,
+      );
+    }
+
     $node->content['win_conditions'] = array(
       '#type' => 'fieldset',
       '#title' => t('Winning Conditions'),
       '#description' => t('Conditions necessary for a form to win the test.'),
       '#collapsible' => FALSE,
       '#collapsed' => FALSE,
-      '#weight' => 10,
+      '#weight' => 11,
     );
     
     // List the win conditions in use on this test
@@ -774,7 +942,34 @@ function _webform_ab_check_for_win($test_nid) {
      */
     $node = node_load($test_nid, NULL, TRUE);
     
-    // Check each included webform
+    // Check win thresholds to make sure that all webforms meet the thresholds
+    // before checking the win conditions
+    $meets_thresholds = TRUE;
+    foreach ($node->included_webforms as $webform_nid => $details) {
+      // Check each threshold in use on the A/B Test node
+      foreach ($node->win_thresholds as $plugin_key => $plugin_config) {
+        // Load the plugin details from
+        $plugin = _webform_ab_get_win_threshold_plugin($plugin_key);
+        if($win_check = ctools_plugin_get_function($plugin, 'check win threshold')) {
+          // Load the config for this plugin from the node
+          $plugin_config = $node->win_thresholds[$plugin_key];
+          // Run the check on this win threshold
+          if(!$win_check($plugin_config, $details, $node)) {
+            // Did NOT pass this threshold, so the win conditions should NOT be
+            // checked.
+            $meets_thresholds = FALSE;
+            continue 2;
+          }
+        }
+      }
+    }
+    // If any of the thresholds failed, don't run the win conditions
+    if (!$meets_thresholds) {
+      return FALSE;
+    }
+
+
+    // Check win conditions each included webform
     foreach ($node->included_webforms as $webform_nid => $details) {
       // Check each condition in use on the A/B Test node
       foreach ($node->win_conditions as $plugin_key => $plugin_config) {
@@ -916,6 +1111,51 @@ if (!function_exists('trim_byref')) {
  */
 
 /**
+ * Implementation of hook_ctools_plugin_directory().
+ * Tell ctools where this module's plugins live
+ */
+function webform_ab_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'webform_ab') {
+    return 'plugins/' . $plugin;
+  }
+}
+
+
+/**
+ * Win thresholds
+ */
+/**
+ * Get an array of all win threshold plugins
+ */
+function _webform_ab_get_win_threshold_plugins() {
+  ctools_include('plugins');
+  return ctools_get_plugins('webform_ab', 'win_thresholds');
+}
+
+/**
+ * Get a particular win condition plugin
+ */
+function _webform_ab_get_win_threshold_plugin($plugin_key) {
+  ctools_include('plugins');
+  return ctools_get_plugins('webform_ab', 'win_thresholds', $plugin_key);
+}
+
+/**
+ * Implements hook_ctools_plugin_TYPE().
+ * Tell ctools a bit about the win_thresholds plugin type
+ */
+function webform_ab_ctools_plugin_win_thresholds() {
+  return array(
+    'use hooks' => TRUE,
+    'cache' => TRUE,
+  );
+}
+
+
+/**
+ * Win conditions
+ */
+/**
  * Get an array of all win condition plugins
  */
 function _webform_ab_get_win_condition_plugins() {
@@ -940,15 +1180,4 @@ function webform_ab_ctools_plugin_win_conditions() {
     'use hooks' => TRUE,
     'cache' => TRUE,
   );
-}
-
-
-/**
- * Implementation of hook_ctools_plugin_directory().
- * Tell ctools where this module's plugins live
- */
-function webform_ab_ctools_plugin_directory($module, $plugin) {
-  if ($module == 'webform_ab') {
-    return 'plugins/' . $plugin;
-  }
 }
