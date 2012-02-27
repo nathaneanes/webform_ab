@@ -44,34 +44,6 @@ function webform_ab_schema() {
         'default' => '',
         'not null' => FALSE,
       ),
-      'daily_notification_email' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'description' => 'Emails to send daily summaries to.',
-        'default' => '',
-        'not null' => FALSE,
-      ),
-      'daily_notification_sms' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'description' => 'Cell phone numbers to send daily summaries to.',
-        'default' => '',
-        'not null' => FALSE,
-      ),
-      'win_notification_email' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'description' => 'Emails to send a win notification to.',
-        'default' => '',
-        'not null' => FALSE,
-      ),
-      'win_notification_sms' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'description' => 'Cell phone numbers to send a win notification to .',
-        'default' => '',
-        'not null' => FALSE,
-      ),
       'public_teaser' => array(
         'type' => 'text',
         'not null' => FALSE,
@@ -306,9 +278,129 @@ function webform_ab_update_6003() {
 }
 
 
+ 
 /**
- * 2.x update:
- *  - Add webform_ab_win_conditions table
- *  - Check for ctools
- *  - Remove win_type, win_value, minimum_hits from webform_ab
+ * Update to 6.x-2.x version: convert old version of win conditions to use new
+ * ctools plugins
  */
+function webform_ab_update_6200() {
+  // Make sure ctools is enabled
+  if (!module_exists('ctools')) {
+    $ret['#abort'] = array(
+      'success' => FALSE, 
+      'query' => 'In order to update the Webform A/B Test module, you must first enable the ' . l('Chaos Tools (ctools) module', 'http://drupal.org/project/ctools'),
+    );
+    return $ret;
+  }
+
+  // Threshold plugin config
+  $schema['webform_ab_win_thresholds'] = array(
+    'description' => t('Win theshold plugin config'),
+    'fields' => array(
+      'test_nid' => array(
+        'description' => t('Node ID for the Webform A/B test node'),
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'plugin_key' => array(
+        'description' => t('Key for plugin'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'options' => array(
+        'description' => t('Serialized options'),
+        'serialize' => TRUE,
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+    ),
+    'indexes' => array(
+      'test_nid' => array('test_nid'),
+      'plugin_key' => array('plugin_key')
+    ),
+    'primary key' => array('test_nid', 'plugin_key'),
+  );
+
+  // Win condition plugin config
+  $schema['webform_ab_win_conditions'] = array(
+    'description' => t('Win condition plugin config'),
+    'fields' => array(
+      'test_nid' => array(
+        'description' => t('Node ID for the Webform A/B test node'),
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'plugin_key' => array(
+        'description' => t('Key for plugin'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'options' => array(
+        'description' => t('Serialized options'),
+        'serialize' => TRUE,
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+    ),
+    'indexes' => array(
+      'test_nid' => array('test_nid'),
+      'plugin_key' => array('plugin_key')
+    ),
+    'primary key' => array('test_nid', 'plugin_key'),
+  );
+
+
+  $ret = array();
+
+  // Add new tables
+  db_create_table($ret, 'webform_ab_win_thresholds', $schema['webform_ab_win_thresholds']);
+  db_create_table($ret, 'webform_ab_win_conditions', $schema['webform_ab_win_conditions']);
+
+  // Convert existing A/B tests
+  $result = db_query('SELECT * FROM {webform_ab}');
+  while ($row = db_fetch_object($result)) {
+    // Save minimum hits
+    $threshold = array(
+      'test_nid' => $row->nid,
+      'plugin_key' => 'minimum_hits',
+      'options' => array('hits' => $row->minimum_hits),
+    );
+    drupal_write_record('webform_ab_win_thresholds', $threshold);
+
+    // Save the actual win condition
+    switch ($row->win_type) {
+      case 'total_conversions':
+        $condition = array(
+          'test_nid' => $row->nid,
+          'plugin_key' => 'total_conversions',
+          'options' => array('conversions' => $row->win_value),
+        );
+        drupal_write_record('webform_ab_win_conditions', $condition);
+        break;
+
+      case 'percent_conversions':
+        $condition = array(
+          'test_nid' => $row->nid,
+          'plugin_key' => 'percent_conversions',
+          'options' => array('percentage' => ($row->win_value / 100)),
+        );
+        drupal_write_record('webform_ab_win_conditions', $condition);
+        break;
+    }
+  }
+
+  // Remove columns that aren't needed anymore
+  db_drop_field($ret, 'webform_ab', 'minimum_hits');
+  db_drop_field($ret, 'webform_ab', 'win_type');
+  db_drop_field($ret, 'webform_ab', 'win_value');
+  db_drop_field($ret, 'webform_ab', 'daily_notification_email');
+  db_drop_field($ret, 'webform_ab', 'daily_notification_sms');
+  db_drop_field($ret, 'webform_ab', 'win_notification_email');
+  db_drop_field($ret, 'webform_ab', 'win_notification_sms');
+
+  return $ret;
+}
