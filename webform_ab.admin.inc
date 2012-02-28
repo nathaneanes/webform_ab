@@ -160,14 +160,19 @@ function webform_ab_test_webforms($node) {
   );
   
   // Show the list of currently-included forms
-  $headers = array(t('Name'), t('Status'), t('Operations'));
+  $headers = array(
+    t('Name'), 
+    t('Status'), 
+    array('data' => t('Operations'), 'colspan' => 3),
+  );
   $rows = array();
   foreach ($node->included_webforms as $webform_nid => $webform_details) {
     $rows[] = array(
       $webform_details['title'], 
       $webform_ab_status_labels[$webform_details['status']],
-      l('edit', 'node/' . $webform_nid . '/edit') . ' | ' .
-        l('remove', 'node/' . $node->nid . '/webforms/remove/' . $webform_nid)
+      l('view', 'node/' . $webform_nid),
+      l('edit', 'node/' . $webform_nid . '/edit'),
+      l('remove from test', 'node/' . $node->nid . '/webforms/remove/' . $webform_nid)
     );
   }
   
