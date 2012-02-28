@@ -11,9 +11,9 @@ $plugin = array(
   'title' => t('Conversion Percentage'),
   'description' => t('A webform must reach this percentage of conversions to be declared the winner.'),
   'config form' => 'webform_ab_percent_conversions_config',
-  'config validation form' => 'webform_ab_percent_conversions_config_validate',
+  'config form validation' => 'webform_ab_percent_conversions_config_validate',
   'config summary' => 'webform_ab_percent_conversions_config_summary',
-  'check win criteria' => 'webform_ab_percent_conversions_check_win',
+  'check criteria' => 'webform_ab_percent_conversions_check_win',
   'prep for save' => 'webform_ab_percent_conversions_prep_save',
 );
 

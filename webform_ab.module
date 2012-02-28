@@ -12,7 +12,6 @@
  *    Fields were in place, but commented out: removed in ba3e048
  *  Option to start the test and lock down the edits
  *  Permissions: declare winner? Start/end test?
- *  Further test permission settings
  */
 
 // Active status, for webforms within a test
@@ -226,7 +225,7 @@ function webform_ab_form(&$node, $form_state) {
     '#title' => t('Which types of webforms will this test use?'),
     '#description' => t('Once set, this cannot be changed.'),
     '#options' => module_invoke_all('webform_ab_get_webform_types'),
-    '#default_value' => $node->webform_types,
+    '#default_value' => isset($node->webform_types) ? $node->webform_types : 'webform',
     '#required' => TRUE,
   );
   
@@ -250,6 +249,7 @@ function webform_ab_form(&$node, $form_state) {
     $form['win_thresholds'][$plugin_key]['enable'] = array(
       '#type' => 'checkbox',
       '#title' => $plugin['title'],
+      '#description' => $plugin['description'],
       '#default_value' => isset($node->win_thresholds[$plugin_key]),
     );
     // If this win threshold offers more options (as most do), add the form
@@ -307,6 +307,7 @@ function webform_ab_form(&$node, $form_state) {
     $form['win_conditions'][$plugin_key]['enable'] = array(
       '#type' => 'checkbox',
       '#title' => $plugin['title'],
+      '#description' => $plugin['description'],
       '#default_value' => isset($node->win_conditions[$plugin_key]),
     );
     // If this win condition offers more options (as most do), add the form
@@ -364,7 +365,7 @@ function webform_ab_validate($node, &$form) {
       if ($config['enable'] > 0) {
         $has_win_threshold = TRUE;
         $plugin = _webform_ab_get_win_threshold_plugin($plugin_key);
-        if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
+        if($config_validation_function = ctools_plugin_get_function($plugin, 'config form validation')) {
           // Call the validate function. Pass in a field name prefix for use by
           // form_set_error in the validation function.
           // Note that the config options for the plugin are still in the
@@ -393,7 +394,7 @@ function webform_ab_validate($node, &$form) {
       if ($config['enable'] > 0) {
         $has_win_condition = TRUE;
         $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
-        if($config_validation_function = ctools_plugin_get_function($plugin, 'config validation form')) {
+        if($config_validation_function = ctools_plugin_get_function($plugin, 'config form validation')) {
           // Call the validate function. Pass in a field name prefix for use by
           // form_set_error in the validation function.
           // Note that the config options for the plugin are still in the
@@ -950,7 +951,7 @@ function _webform_ab_check_for_win($test_nid) {
       foreach ($node->win_thresholds as $plugin_key => $plugin_config) {
         // Load the plugin details from
         $plugin = _webform_ab_get_win_threshold_plugin($plugin_key);
-        if($win_check = ctools_plugin_get_function($plugin, 'check win threshold')) {
+        if($win_check = ctools_plugin_get_function($plugin, 'check criteria')) {
           // Load the config for this plugin from the node
           $plugin_config = $node->win_thresholds[$plugin_key];
           // Run the check on this win threshold
@@ -975,7 +976,7 @@ function _webform_ab_check_for_win($test_nid) {
       foreach ($node->win_conditions as $plugin_key => $plugin_config) {
         // Load the plugin details from
         $plugin = _webform_ab_get_win_condition_plugin($plugin_key);
-        if($win_check = ctools_plugin_get_function($plugin, 'check win criteria')) {
+        if($win_check = ctools_plugin_get_function($plugin, 'check criteria')) {
           // Load the config for this plugin from the node
           $plugin_config = $node->win_conditions[$plugin_key];
           // Run the win check on this win condition

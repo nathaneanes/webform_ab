@@ -10,9 +10,9 @@ $plugin = array(
   'title' => t('Minimum Hits'),
   'description' => t('All webforms must be visited by at least this many users before the win conditions are checked.'),
   'config form' => 'webform_ab_minimum_hits_config',
-  'config validation form' => 'webform_ab_minimum_hits_config_validate',
+  'config form validation' => 'webform_ab_minimum_hits_config_validate',
   'config summary' => 'webform_ab_minimum_hits_config_summary',
-  'check win threshold' => 'webform_ab_minimum_hits_check_threshold',
+  'check criteria' => 'webform_ab_minimum_hits_check_threshold',
 );
 
 /**

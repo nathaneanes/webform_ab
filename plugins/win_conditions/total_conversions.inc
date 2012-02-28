@@ -10,9 +10,9 @@ $plugin = array(
   'title' => t('Total Conversions'),
   'description' => t('This many conversions must be made by a webform before it is declared the winner.'),
   'config form' => 'webform_ab_total_conversions_config',
-  'config validation form' => 'webform_ab_total_conversions_config_validate',
+  'config form validation' => 'webform_ab_total_conversions_config_validate',
   'config summary' => 'webform_ab_total_conversions_config_summary',
-  'check win criteria' => 'webform_ab_total_conversions_check_win',
+  'check criteria' => 'webform_ab_total_conversions_check_win',
 );
 
 
