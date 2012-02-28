@@ -299,6 +299,9 @@ function webform_ab_test_remove_webform_confirm(&$form_state, $test_nid, $webfor
 function webform_ab_test_remove_webform_confirm_submit($form, &$form_state) {
   db_query('DELETE FROM {webform_ab_forms} WHERE test_nid = %d AND webform_nid = %d', array($form['#test_nid'], $form['#webform_nid']));
   
+  // Notify other modules that the webform is being removed
+  module_invoke_all('webform_ab_remove_form', $form['#test_nid'], $form['#webform_nid']);
+  
   drupal_set_message(t('The webform has been removed.'));
   // Redirect back to the list of webforms
   $form_state['redirect'] = 'node/' . $form['#test_nid'] . '/webforms';
