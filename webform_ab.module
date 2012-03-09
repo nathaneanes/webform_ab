@@ -416,7 +416,7 @@ function webform_ab_validate($node, &$form) {
 
 /**
  * Implementation of hook_nodeapi().
- * Prepare webform_ab nodes for saving
+ * Prepare webform_ab nodes for saving, and handle webform deletes
  */
 function webform_ab_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
   if ($node->type == 'webform_ab' && $op == 'presave') {
@@ -471,6 +471,23 @@ function webform_ab_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
       else {
         unset($node->win_conditions[$plugin_key]);
       }
+    }
+  }
+  elseif ($op == 'delete') {
+    // When a webform is deleted, remove it from any existing tests
+    // Try to get webform node types
+    $webform_types = webform_variable_get('webform_node_types');
+    // If the webform node types is empty, assume it's only webform (from webform
+    // 2.x)
+    if (empty($webform_types)) {
+      $webform_types = array('webform');
+    }
+
+    // If this is a webform node, delete A/B test records
+    if (in_array($node->type, $webform_types)) {
+      db_query('DELETE FROM {webform_ab_forms} WHERE webform_nid = %d', $node->nid);
+      db_query('DELETE FROM {webform_ab_hits} WHERE webform_nid = %d', $node->nid);
+      db_query('DELETE FROM {webform_ab_conversion} WHERE webform_nid = %d', $node->nid);
     }
   }
 }
