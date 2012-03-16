@@ -575,21 +575,35 @@ function webform_ab_load(&$node) {
   while ($row = db_fetch_object($result)) {
     $load->win_conditions[$row->plugin_key] = unserialize($row->options);
   }
-    
+
   // Load the included webforms and info about them
-  $result = db_query('SELECT f.webform_nid, f.status, n.title, COUNT(DISTINCT hits.hit_id) as hits, COUNT(DISTINCT con.sid) AS conversions
+  $included_webforms = array();
+
+  $result = db_query('SELECT f.webform_nid, f.status, n.title
     FROM {webform_ab_forms} f
     LEFT JOIN {node} n ON n.nid = f.webform_nid
-    LEFT JOIN {webform_ab_hits} hits ON hits.test_nid = f.test_nid AND hits.webform_nid = f.webform_nid
-    LEFT JOIN  {webform_ab_conversion} con ON con.test_nid = f.test_nid AND con.webform_nid = f.webform_nid
     WHERE f.test_nid = %d
-    GROUP BY f.test_nid, f.webform_nid, f.status, n.title
     ORDER BY f.status, n.title', $node->nid);
-  $included_webforms = array();
   while ($row = db_fetch_array($result)) {
     $included_webforms[$row['webform_nid']] = $row;
   }
-  
+
+  $result = db_query('SELECT webform_nid, COUNT(*) as hits
+    FROM {webform_ab_hits}
+    WHERE test_nid = %d
+    GROUP BY webform_nid', $node->nid);
+  while ($row = db_fetch_array($result)) {
+    $included_webforms[$row['webform_nid']]['hits'] = $row['hits'];
+  }
+
+  $result = db_query('SELECT webform_nid, COUNT(*) as conversions
+    FROM {webform_ab_conversion}
+    WHERE test_nid = %d
+    GROUP BY webform_nid', $node->nid);
+  while ($row = db_fetch_array($result)) {
+    $included_webforms[$row['webform_nid']]['conversions'] = $row['conversions'];
+  }
+
   $load->included_webforms = $included_webforms;
   
   return $load;
