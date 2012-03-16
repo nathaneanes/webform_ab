@@ -90,7 +90,8 @@ function webform_ab_schema() {
     'primary key' => array('test_nid', 'webform_nid'),
     'indexes' => array(
       'test_nid' => array('test_nid'),
-      'webform_nid' => array('webform_nid')
+      'webform_nid' => array('webform_nid'),
+      'status' => array('status'),
     ),
   );
   
@@ -402,5 +403,14 @@ function webform_ab_update_6200() {
   db_drop_field($ret, 'webform_ab', 'win_notification_email');
   db_drop_field($ret, 'webform_ab', 'win_notification_sms');
 
+  return $ret;
+}
+
+/**
+ * Add an index on form status
+ */
+function webform_ab_update_6201() {
+  $ret = array();
+  db_add_index($ret, 'webform_ab_forms', 'status', array('status'));
   return $ret;
 }
