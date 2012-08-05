@@ -757,7 +757,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
       return $node;
     }
     // Full node view: redirect to one of the included webforms
-    else {
+    elseif ($page) {
       // Pick query variables to pass along
       $query_vars = $_GET;
       unset($query_vars['q']);
