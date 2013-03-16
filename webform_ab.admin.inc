@@ -318,7 +318,7 @@ function webform_ab_test_remove_webform_confirm($form, &$form_state, $test_nid, 
 function webform_ab_test_remove_webform_confirm_submit($form, &$form_state) {
   db_delete('webform_ab_forms')
     ->condition('test_nid', $form['#test_nid'])
-    ->condition('webform_nid', $form['#webform_nid']))
+    ->condition('webform_nid', $form['#webform_nid'])
     ->execute();
   // Notify other modules that the webform is being removed
   module_invoke_all('webform_ab_remove_form', $form['#test_nid'], $form['#webform_nid']);

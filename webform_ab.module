@@ -87,7 +87,7 @@ function webform_ab_permission() {
 function webform_ab_menu() {
   $items = array();
   $items['node/%webform_ab_menuitem/reports'] = array(
-    'title' => 'Reports and Monitoring',
+    'title' => 'Reports and monitoring',
     'page callback' => 'webform_ab_test_reports',
     'page arguments' => array(1),
     'access callback' => 'webform_ab_can_view_reports',
@@ -102,7 +102,7 @@ function webform_ab_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
   $items['node/%webform_ab_menuitem/webforms'] = array(
-    'title' => 'Included Webforms',
+    'title' => 'Included webforms',
     'page callback' => 'webform_ab_test_webforms',
     'page arguments' => array(1),
     'access callback' => 'node_access',
@@ -112,7 +112,7 @@ function webform_ab_menu() {
     'type' => MENU_LOCAL_TASK,
   );
   $items['node/%webform_ab_menuitem/reports/reset'] = array(
-    'title' => 'Reset Data',
+    'title' => 'Reset data',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('webform_ab_clear_test_data_confirm', 1),
     'access arguments' => array('reset webform_ab test data'),
@@ -121,7 +121,7 @@ function webform_ab_menu() {
     'weight' => 5,
   );
   $items['node/%webform_ab_menuitem/webforms/remove'] = array(
-    'title' => 'Remove Form',
+    'title' => 'Remove form',
     'page callback' => 'webform_ab_test_remove_webform',
     'page arguments' => array(1),
     'access callback' => 'node_access',
@@ -129,9 +129,9 @@ function webform_ab_menu() {
     'file' => 'webform_ab.admin.inc',
     'type' => MENU_CALLBACK,
   );
-  $items['admin/config/webform_ab'] = array(
-    'title' => 'Webform A/B Test Settings',
-    'description' => 'Settings for Webform A/B Tests',
+  $items['admin/config/content/webform_ab'] = array(
+    'title' => 'Webform A/B test settings',
+    'description' => 'Settings for Webform A/B tests',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('webform_ab_admin_settings'),
     'access arguments' => array('administer webform_ab'),
@@ -549,8 +549,8 @@ function webform_ab_update($node, $is_insert = FALSE) {
 /**
  * Implements hook_load().
  */
-function webform_ab_load(&$nodes) {
-  foreach (&$nodes as $nid => && $node) {
+function webform_ab_load($nodes) {
+  foreach ($nodes as $nid => $node) {
     $load = db_fetch_object(db_query('SELECT * FROM {webform_ab} WHERE nid = :nid', array(':nid' => $node->nid)));
 
     // Load the winning thresholds for this test
