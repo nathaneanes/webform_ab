@@ -101,7 +101,7 @@ function webform_ab_menu() {
     'weight' => 0,
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  $items['node/%webform_ab_menuitem/reports/webforms'] = array(
+  $items['node/%webform_ab_menuitem/webforms'] = array(
     'title' => 'Included webforms',
     'page callback' => 'webform_ab_test_webforms',
     'page arguments' => array(1),
@@ -111,7 +111,7 @@ function webform_ab_menu() {
     'weight' => 3,
     'type' => MENU_LOCAL_TASK,
   );
-  $items['node/%webform_ab_menuitem/reports/reset'] = array(
+  $items['node/%webform_ab_menuitem/reset'] = array(
     'title' => 'Reset data',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('webform_ab_clear_test_data_confirm', 1),
@@ -120,7 +120,7 @@ function webform_ab_menu() {
     'type' => MENU_LOCAL_TASK,
     'weight' => 5,
   );
-  $items['node/%webform_ab_menuitem/reports/remove'] = array(
+  $items['node/%webform_ab_menuitem/webforms/remove'] = array(
     'title' => 'Remove form',
     'page callback' => 'webform_ab_test_remove_webform',
     'page arguments' => array(1),
@@ -279,9 +279,11 @@ function webform_ab_form(&$node, $form_state) {
         '#suffix' => '</div>',
       );
       // Get the config form fields for this plugin
-      $config_form = $config_form_function($node->win_thresholds[$plugin_key]);
+      $plugin_keys = isset($node->win_thresholds[$plugin_key]) ? $node->win_thresholds[$plugin_key] : '';
+      $config_form = $config_form_function($plugin_keys);
       // ...and merge them into the fieldset
-      $form['win_thresholds'][$plugin_key]['options'] = array_merge($form['win_thresholds'][$plugin_key]['options'], $config_form);
+      $form['win_thresholds'][$plugin_key]['options'] = array_merge(
+        $form['win_thresholds'][$plugin_key]['options'], $config_form);
     }
   }
 
@@ -331,9 +333,11 @@ function webform_ab_form(&$node, $form_state) {
         '#suffix' => '</div>',
       );
       // Get the config form fields for this plugin
-      $config_form = $config_form_function($node->win_conditions[$plugin_key]);
+      $plugin_keys = isset($node->win_conditions[$plugin_key]) ? $node->win_conditions[$plugin_key] : '';
+      $config_form = $config_form_function($plugin_keys);
       // ...and merge them into the fieldset
-      $form['win_conditions'][$plugin_key]['options'] = array_merge($form['win_conditions'][$plugin_key]['options'], $config_form);
+      $form['win_conditions'][$plugin_key]['options'] = array_merge(
+        $form['win_conditions'][$plugin_key]['options'], $config_form);
     }
   }
 
@@ -551,19 +555,19 @@ function webform_ab_update($node, $is_insert = FALSE) {
  */
 function webform_ab_load($nodes) {
   foreach ($nodes as $nid => $node) {
-    $load = db_fetch_object(db_query('SELECT * FROM {webform_ab} WHERE nid = :nid', array(':nid' => $node->nid)));
+    $load = db_query('SELECT * FROM {webform_ab} WHERE nid = :nid', array(':nid' => $node->nid))->fetchObject();
 
     // Load the winning thresholds for this test
     $result = db_query('SELECT * FROM {webform_ab_win_thresholds} WHERE test_nid = :test_nid', array(':test_nid' => $node->nid));
     $load->win_thresholds = array();
-    while ($row = db_fetch_object($result)) {
+    foreach ($result as $row) {
       $load->win_thresholds[$row->plugin_key] = unserialize($row->options);
     }
 
     // Load the winning conditions for this test
     $result = db_query('SELECT * FROM {webform_ab_win_conditions} WHERE test_nid = :test_nid', array(':test_nid' => $node->nid));
     $load->win_conditions = array();
-    while ($row = db_fetch_object($result)) {
+    foreach ($result as $row) {
       $load->win_conditions[$row->plugin_key] = unserialize($row->options);
     }
 
@@ -573,9 +577,10 @@ function webform_ab_load($nodes) {
     $result = db_query('SELECT f.webform_nid, f.status, n.title ' .
       'FROM {webform_ab_forms} f ' .
       'LEFT JOIN {node} n ON n.nid = f.webform_nid ' .
-      'WHERE f.test_nid = :f.test_nid ' .
-      'ORDER BY f.status, n.title', array(':f.test_nid' => $node->nid));
-    while ($row = db_fetch_array($result)) {
+      'WHERE f.test_nid = :test_nid ' .
+      'ORDER BY f.status, n.title', array(':test_nid' => $node->nid));
+    foreach ($result as $row) {
+      $row = (array) $row;
       $included_webforms[$row['webform_nid']] = $row;
     }
 
@@ -583,7 +588,8 @@ function webform_ab_load($nodes) {
       'FROM {webform_ab_hits} ' .
       'WHERE test_nid = :test_nid ' .
       'GROUP BY webform_nid', array(':test_nid' => $node->nid));
-    while ($row = db_fetch_array($result)) {
+    foreach ($result as $row) {
+      $row = (array) $row;
       $included_webforms[$row['webform_nid']]['hits'] = $row['hits'];
     }
 
@@ -591,7 +597,8 @@ function webform_ab_load($nodes) {
       'FROM {webform_ab_conversion} ' .
       'WHERE test_nid = :test_nid ' .
       'GROUP BY webform_nid', array(':test_nid' => $node->nid));
-    while ($row = db_fetch_array($result)) {
+    foreach ($result as $row) {
+      $row = (array) $row;
       $included_webforms[$row['webform_nid']]['conversions'] = $row['conversions'];
     }
 
@@ -634,7 +641,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
   // If the current user has permission to modify this test, show them the
   // overview page instead of directing them to one of the webforms in the test
   // If view_webform is set in the URL, don't show the overview
-  if (node_access('update', $node) && $_GET['view_webform'] != 1) {
+  if (node_access('update', $node) && (empty($_GET['view_webform']) || $_GET['view_webform'] != 1)) {
     $type = node_type_get_type($node);
     $node->content['description'] = array(
       '#value' => 'This is the admin overview of the A/B Test. If an unpriveleged or anonymous user visits this same URL, ' .
@@ -660,26 +667,26 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
     $node->content['test_settings']['title'] = array(
       '#type' => 'item',
       '#title' => check_plain($type->title_label),
-      '#value' => $node->title,
+      '#markup' => $node->title,
       '#weight' => 0,
     );
     $node->content['test_settings']['body'] = array(
       '#type' => 'item',
       '#title' => check_plain($type->body_label),
-      '#value' => $node->body,
+      '#markup' => isset($node->body) ? $node->body : '',
       '#weight' => 1,
     );
     $node->content['test_settings']['public_teaser'] = array(
       '#type' => 'item',
       '#title' => t('Public Teaser'),
-      '#value' => $node->public_teaser,
+      '#markup' => isset($node->public_teaser) ? $node->public_teaser : '',
       '#weight' => 1,
     );
     $webform_types = module_invoke_all('webform_ab_get_webform_types');
     $node->content['test_settings']['webform_types'] = array(
       '#type' => 'item',
       '#title' => t('Which types of webforms will this test use?'),
-      '#value' => $webform_types[$node->webform_types],
+      '#markup' => $webform_types[$node->webform_types],
       '#weight' => 2,
     );
     $node->content['win_thresholds'] = array(
@@ -705,7 +712,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
         '#type' => 'item',
         '#title' => $plugin['title'],
         '#description' => $plugin['description'],
-        '#value' => $summary,
+        '#markup' => $summary,
       );
     }
     $node->content['win_conditions'] = array(
@@ -730,7 +737,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
         '#type' => 'item',
         '#title' => $plugin['title'],
         '#description' => $plugin['description'],
-        '#value' => $summary,
+        '#markup' => $summary,
       );
     }
     return $node;
@@ -773,8 +780,9 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
           // webform as the last time
           global $user;
           if ($user->uid > 0) {
-            $previous_test_hit = db_fetch_array(db_query('SELECT webform_nid FROM {webform_ab_hits}' .
-              'WHERE test_nid = :test_nid AND uid = :uid', array(':test_nid' => array($node->nid, $user->uid))));
+            $previous_test_hit = db_query('SELECT webform_nid FROM {webform_ab_hits}' .
+              'WHERE test_nid = :test_nid AND uid = :uid',
+              array(':test_nid' => array($node->nid, $user->uid)))->fetchAssoc();
             if ($previous_test_hit['webform_nid'] > 0) {
               $webform_nid_to_view = $previous_test_hit['webform_nid'];
             }
@@ -841,7 +849,7 @@ function webform_ab_webform_ab_valid_webforms($webform_types) {
       'WHERE n.status > :status AND n.type = :type ORDER BY n.title',
       array(':status' => 0, ':type' => array('webform')));
     $forms = array();
-    while ($row = db_fetch_array($result)) {
+    foreach ($result as $row) {
       $forms[] = $row;
     }
     return $forms;
@@ -880,18 +888,18 @@ function webform_ab_form_alter(&$form, &$form_state, $form_id) {
             // has already hit the form
             elseif (variable_get('webform_ab_ignore_repeat_hits', '1') > 0) {
               if ($user->uid > 0) {
-                $existing_hit = db_fetch_array(db_query('SELECT hit_id FROM {webform_ab_hits} ' .
+                $existing_hit = db_query('SELECT hit_id FROM {webform_ab_hits} ' .
                   'WHERE test_nid = :test_nid ' .
                   'AND webform_nid = :webform_nid ' .
                   'AND uid = :uid',
-                  array(':test_nid' => array($test_nid, $webform_nid, $user->uid))));
+                  array(':test_nid' => array($test_nid, $webform_nid, $user->uid)))->fetchAssoc();
               }
               else {
-                $existing_hit = db_fetch_array(db_query('SELECT hit_id FROM {webform_ab_hits} ' .
+                $existing_hit = db_query('SELECT hit_id FROM {webform_ab_hits} ' .
                   'WHERE test_nid = :test_nid ' .
                   'AND webform_nid = :webform_nid ' .
                   'AND session_id = :session_id',
-                  array(':test_nid' => array($test_nid, $webform_nid, session_id()))));
+                  array(':test_nid' => array($test_nid, $webform_nid, session_id())))->fetchAssoc();
               }
               if ($existing_hit['hit_id'] > 0) {
                 $log_hit = FALSE;
@@ -1146,12 +1154,21 @@ if (!function_exists('trim_byref')) {
  */
 
 /**
+ * Implements hook_ctools_plugin_type().
+ */
+function webform_ab_ctools_plugin_type() {
+  $plugins['win_conditions'] = array();
+  $plugins['win_thresholds'] = array();
+  return $plugins;
+}
+
+/**
  * Implements hook_ctools_plugin_directory().
  * Tell ctools where this module's plugins live
  */
-function webform_ab_ctools_plugin_directory($owner, $plugin) {
+function webform_ab_ctools_plugin_directory($owner, $plugin_type) {
   if ($owner == 'webform_ab') {
-    return 'plugins/' . $plugin;
+    return 'plugins/' . $plugin_type;
   }
 }
 

@@ -64,23 +64,21 @@ function webform_ab_test_reports($node) {
   // If one of the webforms won, determine pre-win and post-win conversions
   if (($winning_webform_nid = _webform_ab_has_winner_already($node)) > 0) {
     // Get pre- and post-win hit counts
-    $result = db_query('SELECT SUM(IF(hits.time > f.win_time, 1, 0)) AS post_win, SUM(IF(hits.time <= f.win_time, 1, 0)) AS pre_win ' .
+    $post_win_hit_data = db_query('SELECT SUM(IF(hits.time > f.win_time, 1, 0)) AS post_win, SUM(IF(hits.time <= f.win_time, 1, 0)) AS pre_win ' .
       'FROM {webform_ab_forms} f ' .
       'LEFT JOIN {webform_ab_hits} hits ON hits.test_nid = f.test_nid AND hits.webform_nid = f.webform_nid ' .
       'WHERE f.test_nid = :test_nid AND f.webform_nid = :webform_nid ' .
       'GROUP BY f.test_nid, f.webform_nid',
-      array(':test_nid' => $node->nid, ':webform_nid' => $winning_webform_nid));
-    $post_win_hit_data = db_fetch_array($result);
+      array(':test_nid' => $node->nid, ':webform_nid' => $winning_webform_nid))->fetchAssoc();
 
     // Get pre- and post-win conversions counts
-    $result = db_query('SELECT SUM(IF(sub.submitted > f.win_time, 1, 0)) AS post_win, SUM(IF(sub.submitted <= f.win_time, 1, 0)) AS pre_win ' .
+    $post_win_conversion_data = db_query('SELECT SUM(IF(sub.submitted > f.win_time, 1, 0)) AS post_win, SUM(IF(sub.submitted <= f.win_time, 1, 0)) AS pre_win ' .
       'FROM webform_ab_forms f ' .
       'LEFT JOIN webform_ab_conversion con ON con.test_nid = f.test_nid AND con.webform_nid = f.webform_nid ' .
       'LEFT JOIN webform_submissions sub ON con.sid = sub.sid ' .
       'WHERE f.test_nid = :test_nid AND f.webform_nid = :webform_nid ' .
       'GROUP BY f.test_nid, f.webform_nid',
-      array(':test_nid' => $node->nid, ':webform_nid' => $winning_webform_nid));
-    $post_win_conversion_data = db_fetch_array($result);
+      array(':test_nid' => $node->nid, ':webform_nid' => $winning_webform_nid))->fetchAssoc();
   }
 
   // Status labels
@@ -108,27 +106,31 @@ function webform_ab_test_reports($node) {
   // Loop over the webforms and add a row to the report table
   if (!empty($node->included_webforms) && is_array($node->included_webforms)) {
     foreach ($node->included_webforms as $webform_nid => $webform_details) {
+      $hit_counts = isset($hit_counts[$webform_nid]) ? $hit_counts[$webform_nid] : 0;
+      $conversion_counts = isset($conversion_counts[$webform_nid]) ? $conversion_counts[$webform_nid] : 0;
       $line = array(
         $webform_ab_status_labels[$webform_details['status']],
         $webform_details['title'],
-        $hit_counts[$webform_nid],
-        $conversion_counts[$webform_nid],
-        ($hit_counts[$webform_nid] > 0) ? round(100 * $conversion_counts[$webform_nid] / $hit_counts[$webform_nid]) . '%' : '0%',
+        isset($hit_counts[$webform_nid]) ? $hit_counts[$webform_nid] : 0,
+        isset($conversion_counts[$webform_nid]) ? $conversion_counts[$webform_nid] : 0,
+        ($hit_counts > 0) ? round(100 * $conversion_counts / $hit_counts) . '%' : '0%',
       );
       // If this webform is the winner, show pre- and post-win conversion percentages
       if ($winning_webform_nid == $webform_nid) {
-        $line[] = $post_win_hit_data['pre_win'];
-        $line[] = $post_win_conversion_data['pre_win'];
+        $line[] = isset($post_win_hit_data['pre_win']) ? $post_win_hit_data['pre_win'] : 0;
+        $line[] = isset($post_win_conversion_data['pre_win']) ? $post_win_conversion_data['pre_win'] : 0;
         // Only divide if greater than 0
-        if ($post_win_hit_data['pre_win'] > 0) {
+        if (isset($post_win_hit_data['pre_win']) && $post_win_hit_data['pre_win'] > 0) {
           $line[] = round(100 * $post_win_conversion_data['pre_win'] / $post_win_hit_data['pre_win']) . '%';
         }
         else {
           $line[] = '0%';
         }
-        $line[] = $post_win_hit_data['post_win'];
-        $line[] = $post_win_conversion_data['post_win'];
-        $line[] = ($post_win_hit_data['post_win'] > 0) ? round(100 * $post_win_conversion_data['post_win'] / $post_win_hit_data['post_win']) . '%' : '0%';
+        $line[] = isset($post_win_hit_data['post_win']) ? $post_win_hit_data['post_win'] : 0;
+        $line[] = isset($post_win_conversion_data['post_win']) ? $post_win_conversion_data['post_win'] : 0;
+        $post_win_hit_data = isset($post_win_hit_data['post_win']) ? $post_win_hit_data['post_win'] : 0;
+        $post_win_conversion_data = isset($post_win_conversion_data['post_win']) ? $post_win_conversion_data['post_win'] : 0;
+        $line[] = ($post_win_hit_data > 0) ? round(100 * $post_win_conversion_data / $post_win_hit_data) . '%' : '0%';
       }
       else {
         // Not the winning webform. Pad out into the columns for win data
@@ -144,7 +146,7 @@ function webform_ab_test_reports($node) {
   if (count($rows) == 0) {
     $rows[] = array(array(
         'data' => t('No webforms have been added to this A/B test. Visit the !forms_tab tab to add webforms.',
-          array('!forms_tab' => l(t('Included Webforms'), 'node/' . $node->nid . '/reports/webforms'))),
+          array('!forms_tab' => l(t('Included Webforms'), 'node/' . $node->nid . '/webforms'))),
         'colspan' => count($headers),
       ));
   }
@@ -216,10 +218,11 @@ function webform_ab_webform_list_add($form, &$form_state, $node) {
   // and title within a sub-array, rather than using the nid as an array key.
   // Re-index the array to use the nid as the key and title as the value.
   $indexed_forms = array();
-  foreach ($flat_forms as $f) {
+  foreach ($flat_forms as $form) {
+    $form = (array) $form;
     // Don't add a webform in the list if it's already included in the test
-    if (!isset($node->included_webforms[$f['nid']])) {
-      $indexed_forms[$f['nid']] = $f['title'];
+    if (!isset($node->included_webforms[$form['nid']])) {
+      $indexed_forms[$form['nid']] = $form['title'];
     }
   }
   // Allow modules to alter the list of forms
@@ -284,10 +287,11 @@ function webform_ab_test_remove_webform($node, $webform_nid) {
   // Make sure the webform they want to remove is actually in the test
   $form_is_included = db_query('SELECT COUNT(*) FROM {webform_ab_forms} ' .
     'WHERE test_nid = :test_nid AND webform_nid = :webform_nid',
-    array(':test_nid' => array($node->nid, $webform_nid)))->fetchField() > 0;
+    array(':test_nid' => $node->nid, ':webform_nid' => $webform_nid))->fetchField() > 0;
   if ($form_is_included) {
     // Show a confirmation form
-    return drupal_get_form('webform_ab_test_remove_webform_confirm', $node->nid, $webform_nid);
+    drupal_set_message(t('The form has been removed from the A/B test.'));
+    return drupal_render(drupal_get_form('webform_ab_test_remove_webform_confirm', $node->nid, $webform_nid));
   }
   else {
     // Somehow tried to remove a webform that isn't in the test
