@@ -87,7 +87,7 @@ function webform_ab_permission() {
 function webform_ab_menu() {
   $items = array();
   $items['node/%webform_ab_menuitem/reports'] = array(
-    'title' => 'Reports and monitoring',
+    'title' => 'A/B reports',
     'page callback' => 'webform_ab_test_reports',
     'page arguments' => array(1),
     'access callback' => 'webform_ab_can_view_reports',
@@ -97,11 +97,11 @@ function webform_ab_menu() {
     'type' => MENU_LOCAL_TASK,
   );
   $items['node/%webform_ab_menuitem/reports/reports'] = array(
-    'title' => 'Reports',
+    'title' => 'A/B reports',
     'weight' => 0,
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  $items['node/%webform_ab_menuitem/webforms'] = array(
+  $items['node/%webform_ab_menuitem/reports/webforms'] = array(
     'title' => 'Included webforms',
     'page callback' => 'webform_ab_test_webforms',
     'page arguments' => array(1),
@@ -120,7 +120,7 @@ function webform_ab_menu() {
     'type' => MENU_LOCAL_TASK,
     'weight' => 5,
   );
-  $items['node/%webform_ab_menuitem/webforms/remove'] = array(
+  $items['node/%webform_ab_menuitem/reports/remove'] = array(
     'title' => 'Remove form',
     'page callback' => 'webform_ab_test_remove_webform',
     'page arguments' => array(1),
@@ -209,7 +209,7 @@ function webform_ab_form(&$node, $form_state) {
   $form['test_settings']['body'] = array(
     '#type' => 'textarea',
     '#title' => check_plain($type->body_label),
-    '#default_value' => $node->body,
+    '#default_value' => !empty($node->body) ? $node->body : '',
     '#cols' => 60,
     '#rows' => 5,
     '#description' => t('Description for admin use. This is not displayed to the public.'),
@@ -217,7 +217,7 @@ function webform_ab_form(&$node, $form_state) {
   $form['test_settings']['public_teaser'] = array(
     '#type' => 'textarea',
     '#title' => t('Public Teaser'),
-    '#default_value' => $node->public_teaser,
+    '#default_value' => !empty($node->public_teaser) ? $node->public_teaser : '',
     '#cols' => 60,
     '#rows' => 5,
     '#description' => t('Teaser for public use. This is is shown if this Webform A/B Test node is shown in a ' .
@@ -348,7 +348,7 @@ function webform_ab_validate($node, &$form) {
   // Validate the winning thresholds
   // First: make sure at least one is selected
   $has_win_threshold = FALSE;
-  if (is_array($node->win_thresholds)) {
+  if (!empty($node->win_thresholds) && is_array($node->win_thresholds)) {
     foreach ($node->win_thresholds as $plugin_key => $config) {
       // If this win condition is enabled, check if the plugin provides a
       // validation method that should be called
@@ -376,7 +376,7 @@ function webform_ab_validate($node, &$form) {
   // Validate the winning conditions
   // First: make sure at least one is selected
   $has_win_condition = FALSE;
-  if (is_array($node->win_conditions)) {
+  if (!empty($node->win_conditions) && is_array($node->win_conditions)) {
     foreach ($node->win_conditions as $plugin_key => $config) {
       // If this win condition is enabled, check if the plugin provides a
       // validation method that should be called
@@ -809,7 +809,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
  */
 function _webform_ab_has_winner_already($node_or_nid) {
   // If a node object was passed as the argument...
-  if (is_object($node_or_nid)) {
+  if (is_object($node_or_nid) && !empty($node_or_nid->included_webforms)) {
     foreach ($node_or_nid->included_webforms as $webform_nid => $details) {
       // Check if this webform was already declared the winner
       if ($details['status'] == WEBFORM_AB_WEBFORM_STATUS_WINNER) {
@@ -818,7 +818,7 @@ function _webform_ab_has_winner_already($node_or_nid) {
     }
   }
   // Node ID passed as argument
-  elseif ($node_or_nid > 0) {
+  elseif (!is_object($node_or_nid ) && $node_or_nid > 0) {
     // @todo Test this
     $webform_nid = db_query('SELECT webform_nid FROM {webform_ab_forms} ' .
       'WHERE test_nid = :test_nid AND status = :status',
@@ -1149,8 +1149,8 @@ if (!function_exists('trim_byref')) {
  * Implements hook_ctools_plugin_directory().
  * Tell ctools where this module's plugins live
  */
-function webform_ab_ctools_plugin_directory($module, $plugin) {
-  if ($module == 'webform_ab') {
+function webform_ab_ctools_plugin_directory($owner, $plugin) {
+  if ($owner == 'webform_ab') {
     return 'plugins/' . $plugin;
   }
 }

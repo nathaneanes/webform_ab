@@ -47,7 +47,7 @@ function webform_ab_test_reports($node) {
     'GROUP BY test_nid, webform_nid',
     array(':test_nid' => $node->nid));
   $hit_counts = array();
-  while ($row = db_fetch_object($hit_counts_result)) {
+  foreach ($hit_counts_result as $row) {
     $hit_counts[$row->webform_nid] = $row->hits;
   }
 
@@ -57,7 +57,7 @@ function webform_ab_test_reports($node) {
     'GROUP BY test_nid, webform_nid',
     array(':test_nid' => $node->nid));
   $conversion_counts = array();
-  while ($row = db_fetch_object($conversion_counts_result)) {
+  foreach ($conversion_counts_result as $row) {
     $conversion_counts[$row->webform_nid] = $row->conversions;
   }
 
@@ -106,43 +106,45 @@ function webform_ab_test_reports($node) {
   $rows = array();
 
   // Loop over the webforms and add a row to the report table
-  foreach ($node->included_webforms as $webform_nid => $webform_details) {
-    $line = array(
-      $webform_ab_status_labels[$webform_details['status']],
-      $webform_details['title'],
-      $hit_counts[$webform_nid],
-      $conversion_counts[$webform_nid],
-      ($hit_counts[$webform_nid] > 0) ? round(100 * $conversion_counts[$webform_nid] / $hit_counts[$webform_nid]) . '%' : '0%',
-    );
-    // If this webform is the winner, show pre- and post-win conversion percentages
-    if ($winning_webform_nid == $webform_nid) {
-      $line[] = $post_win_hit_data['pre_win'];
-      $line[] = $post_win_conversion_data['pre_win'];
-      // Only divide if greater than 0
-      if ($post_win_hit_data['pre_win'] > 0) {
-        $line[] = round(100 * $post_win_conversion_data['pre_win'] / $post_win_hit_data['pre_win']) . '%';
+  if (!empty($node->included_webforms) && is_array($node->included_webforms)) {
+    foreach ($node->included_webforms as $webform_nid => $webform_details) {
+      $line = array(
+        $webform_ab_status_labels[$webform_details['status']],
+        $webform_details['title'],
+        $hit_counts[$webform_nid],
+        $conversion_counts[$webform_nid],
+        ($hit_counts[$webform_nid] > 0) ? round(100 * $conversion_counts[$webform_nid] / $hit_counts[$webform_nid]) . '%' : '0%',
+      );
+      // If this webform is the winner, show pre- and post-win conversion percentages
+      if ($winning_webform_nid == $webform_nid) {
+        $line[] = $post_win_hit_data['pre_win'];
+        $line[] = $post_win_conversion_data['pre_win'];
+        // Only divide if greater than 0
+        if ($post_win_hit_data['pre_win'] > 0) {
+          $line[] = round(100 * $post_win_conversion_data['pre_win'] / $post_win_hit_data['pre_win']) . '%';
+        }
+        else {
+          $line[] = '0%';
+        }
+        $line[] = $post_win_hit_data['post_win'];
+        $line[] = $post_win_conversion_data['post_win'];
+        $line[] = ($post_win_hit_data['post_win'] > 0) ? round(100 * $post_win_conversion_data['post_win'] / $post_win_hit_data['post_win']) . '%' : '0%';
       }
       else {
-        $line[] = '0%';
+        // Not the winning webform. Pad out into the columns for win data
+        while (count($line) < count($headers)) {
+          $line[] = '';
+        }
       }
-      $line[] = $post_win_hit_data['post_win'];
-      $line[] = $post_win_conversion_data['post_win'];
-      $line[] = ($post_win_hit_data['post_win'] > 0) ? round(100 * $post_win_conversion_data['post_win'] / $post_win_hit_data['post_win']) . '%' : '0%';
+      $rows[] = $line;
     }
-    else {
-      // Not the winning webform. Pad out into the columns for win data
-      while (count($line) < count($headers)) {
-        $line[] = '';
-      }
-    }
-    $rows[] = $line;
   }
 
   // If there were no rows, show an empty message
   if (count($rows) == 0) {
     $rows[] = array(array(
         'data' => t('No webforms have been added to this A/B test. Visit the !forms_tab tab to add webforms.',
-          array('!forms_tab' => l(t('Included Webforms'), 'node/' . $node->nid . '/webforms'))),
+          array('!forms_tab' => l(t('Included Webforms'), 'node/' . $node->nid . '/reports/webforms'))),
         'colspan' => count($headers),
       ));
   }
@@ -169,32 +171,32 @@ function webform_ab_test_webforms($node) {
   $headers = array(
     t('Name'),
     t('Status'),
-    array(
-      'data' => t('Operations'),
-      'colspan' => 3,
-    ),
+    t('Operations'),
   );
   $rows = array();
-  foreach ($node->included_webforms as $webform_nid => $webform_details) {
-    $rows[] = array(
-      $webform_details['title'],
-      $webform_ab_status_labels[$webform_details['status']],
-      l(t('view'), 'node/' . $webform_nid),
-      l(t('edit'), 'node/' . $webform_nid . '/edit'),
-      l(t('remove from test'), 'node/' . $node->nid . '/webforms/remove/' . $webform_nid),
-    );
+  if (!empty($node->included_webforms) && is_array($node->included_webforms)) {
+    foreach ($node->included_webforms as $webform_nid => $webform_details) {
+      $rows[] = array(
+        $webform_details['title'],
+        $webform_ab_status_labels[$webform_details['status']],
+        l(t('view'), 'node/' . $webform_nid) . ' ' .
+        l(t('edit'), 'node/' . $webform_nid . '/edit') . ' ' .
+        l(t('remove from test'), 'node/' . $node->nid . '/webforms/remove/' . $webform_nid),
+      );
+    }
   }
 
   // If there are no webforms included, show an empty message
   if (count($rows) == 0) {
     $rows[] = array(array(
-        'data' => t('No webforms have been added to this A/B test. Select a webform in the dropdown below and click the Add button.'),
+        'data' => t('No webforms have been added to this A/B test. ' .
+          'Select a webform in the dropdown below and click the Add button.'),
         'colspan' => count($headers),
       ));
   }
   $return .= theme('table', array('header' => $headers, 'rows' => $rows));
   // Show a form to add more
-  $form = drupal_get_form('webform_ab_webform_list_add', $node);
+  $form = drupal_render(drupal_get_form('webform_ab_webform_list_add', $node));
   $return .= $form;
   return $return;
 }
@@ -207,7 +209,8 @@ function webform_ab_test_webforms($node) {
  */
 function webform_ab_webform_list_add($form, &$form_state, $node) {
   // Get all valid forms for the form type from other modules
-  $flat_forms = module_invoke_all('webform_ab_valid_webforms', $node->webform_types);
+  $webform_types = isset($node->webform_types) ? $node->webform_types : array();
+  $flat_forms = module_invoke_all('webform_ab_valid_webforms', $webform_types);
   // Since module_invoke_all() will wipe out numeric array indices, the
   // implementations of hook_webform_ab_valid_webforms() have to return the nid
   // and title within a sub-array, rather than using the nid as an array key.
