@@ -6,7 +6,7 @@
  * conversions
  */
 
- // Plugin details
+// Plugin details
 $plugin = array(
   'title' => t('Conversion Percentage'),
   'description' => t('A webform must reach this percentage of conversions to be declared the winner.'),
@@ -19,7 +19,7 @@ $plugin = array(
 
 /**
  * Return the config options form for this win condition
- * 
+ *
  * @param $current_config
  *   Array containing current config options (if set). Default values for form
  *   elements should come from here.
@@ -48,7 +48,7 @@ function webform_ab_percent_conversions_config_validate($config, $field_name_pre
     // Fine
   }
   // See if the string ends with a percentage
-  elseif (substr(trim($value), -1) == '%') {
+  elseif (drupal_substr(trim($value), -1) == '%') {
     // Strip the percent sign
     $number = rtrim(trim($value), '%');
     if (!($number > 0 && $number <= 100)) {
@@ -76,7 +76,7 @@ function webform_ab_percent_conversions_config_summary($config) {
  * For conversion percentage, save the percentage as a decimal between 0 and 1
  */
 function webform_ab_percent_conversions_prep_save(&$config) {
-  if (substr(trim($config['percentage']), -1) == '%') {
+  if (drupal_substr(trim($config['percentage']), -1) == '%') {
     // Strip the percent sign
     $number = rtrim(trim($config['percentage']), '%');
     // Convert to a decimal
@@ -86,7 +86,7 @@ function webform_ab_percent_conversions_prep_save(&$config) {
 
 /**
  * Check if the given Webform A/B Test node has a winner
- * 
+ *
  * @param $config
  *   Array of config options for this plugin for the Webform A/B test being
  *   checked for a win. In this case, the array will contain 'percentage'

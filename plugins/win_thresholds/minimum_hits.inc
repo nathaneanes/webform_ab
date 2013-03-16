@@ -17,7 +17,7 @@ $plugin = array(
 
 /**
  * Return the config options form for this win threshold
- * 
+ *
  * @param $current_config
  *   Array containing current config options (if set). Default values for form
  *   elements should come from here.
@@ -56,7 +56,7 @@ function webform_ab_minimum_hits_config_summary($config) {
 
 /**
  * Check if the given Webform A/B Test node has a winner
- * 
+ *
  * @param $config
  *   Array of config options for this plugin for the Webform A/B test being
  *   checked for a win. In this case, the array will contain 'hits'

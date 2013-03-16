@@ -1,7 +1,13 @@
 name = Webform A/B Testing
 description = "Adds a content type for an A/B test of webforms."
-core = 6.x
-package = Webform
+core = 7.x
+package = Webform Extra
 
 dependencies[] = webform
 dependencies[] = ctools
+files[] = webform_ab.admin.inc
+files[] = webform_ab.install
+files[] = webform_ab.module
+files[] = win_conditions/percent_conversions.inc
+files[] = win_conditions/total_conversions.inc
+files[] = win_thresholds/minimum_hits.inc
