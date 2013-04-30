@@ -168,17 +168,19 @@ function webform_ab_menuitem_load($nid) {
  * Implements hook_node_access().
  */
 function webform_ab_node_access($node, $op, $account) {
-  $is_author = $account->uid == $node->uid;
-  switch ($op) {
-    case 'create':
-      return user_access('create webform_ab', $account);
-      break;
-    case 'update':
-      return (user_access('edit own webform_ab', $account) && $is_author) || user_access('edit any webform_ab', $account);
-      break;
-    case 'delete':
-      return (user_access('delete own webform_ab', $account) && $is_author) || user_access('delete any webform_ab', $account);
-      break;
+  if (is_object($node)) {
+    $is_author = $account->uid == $node->uid;
+    switch ($op) {
+      case 'create':
+        return user_access('create webform_ab', $account);
+        break;
+      case 'update':
+        return (user_access('edit own webform_ab', $account) && $is_author) || user_access('edit any webform_ab', $account);
+        break;
+      case 'delete':
+        return (user_access('delete own webform_ab', $account) && $is_author) || user_access('delete any webform_ab', $account);
+        break;
+    }
   }
 }
 
@@ -748,7 +750,7 @@ function webform_ab_view(&$node, $teaser = FALSE, $page = FALSE) {
   elseif (!empty($node->included_webforms)) {
     // If showing a teaser, don't redirect to the other form
     if ($teaser) {
-      $node = node_prepare($node, $teaser);
+      //$node = node_object_prepare($node, $teaser);
       // Don't show the body field - it's the admin description
       unset($node->content['body']);
       $node->content['public_teaser'] = array(
