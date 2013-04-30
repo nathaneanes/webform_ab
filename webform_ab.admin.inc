@@ -73,9 +73,9 @@ function webform_ab_test_reports($node) {
 
     // Get pre- and post-win conversions counts
     $post_win_conversion_data = db_query('SELECT SUM(IF(sub.submitted > f.win_time, 1, 0)) AS post_win, SUM(IF(sub.submitted <= f.win_time, 1, 0)) AS pre_win ' .
-      'FROM webform_ab_forms f ' .
-      'LEFT JOIN webform_ab_conversion con ON con.test_nid = f.test_nid AND con.webform_nid = f.webform_nid ' .
-      'LEFT JOIN webform_submissions sub ON con.sid = sub.sid ' .
+      'FROM {webform_ab_forms} f ' .
+      'LEFT JOIN {webform_ab_conversion} con ON con.test_nid = f.test_nid AND con.webform_nid = f.webform_nid ' .
+      'LEFT JOIN {webform_submissions} sub ON con.sid = sub.sid ' .
       'WHERE f.test_nid = :test_nid AND f.webform_nid = :webform_nid ' .
       'GROUP BY f.test_nid, f.webform_nid',
       array(':test_nid' => $node->nid, ':webform_nid' => $winning_webform_nid))->fetchAssoc();
@@ -106,15 +106,16 @@ function webform_ab_test_reports($node) {
   // Loop over the webforms and add a row to the report table
   if (!empty($node->included_webforms) && is_array($node->included_webforms)) {
     foreach ($node->included_webforms as $webform_nid => $webform_details) {
-      $hit_counts = isset($hit_counts[$webform_nid]) ? $hit_counts[$webform_nid] : 0;
-      $conversion_counts = isset($conversion_counts[$webform_nid]) ? $conversion_counts[$webform_nid] : 0;
+      $this_hit_count = isset($hit_counts[$webform_nid]) ? $hit_counts[$webform_nid] : 0;
+      $this_conversion_count = isset($conversion_counts[$webform_nid]) ? $conversion_counts[$webform_nid] : 0;
       $line = array(
         $webform_ab_status_labels[$webform_details['status']],
         $webform_details['title'],
         isset($hit_counts[$webform_nid]) ? $hit_counts[$webform_nid] : 0,
         isset($conversion_counts[$webform_nid]) ? $conversion_counts[$webform_nid] : 0,
-        ($hit_counts > 0) ? round(100 * $conversion_counts / $hit_counts) . '%' : '0%',
+        ($this_hit_count > 0) ? round(100 * $this_conversion_count / $this_hit_count) . '%' : '0%',
       );
+
       // If this webform is the winner, show pre- and post-win conversion percentages
       if ($winning_webform_nid == $webform_nid) {
         $line[] = isset($post_win_hit_data['pre_win']) ? $post_win_hit_data['pre_win'] : 0;

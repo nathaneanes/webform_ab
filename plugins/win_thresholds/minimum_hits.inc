@@ -66,5 +66,6 @@ function webform_ab_minimum_hits_config_summary($config) {
  *   Webform A/B Test node
  */
 function webform_ab_minimum_hits_check_threshold($config, $webform_details, $test_node) {
-  return ($webform_details['hits'] >= $config['hits']);
+  $hits = isset($webform_details['hits']) ? $webform_details['hits'] : 0;
+  return ($hits >= $config['hits']);
 }
