@@ -264,7 +264,7 @@ function webform_ab_webform_list_add_submit($form, &$form_state) {
     // Make sure the chosen webform isn't already in the test
     // It wouldn't have been an option if it was already in the test, but be on
     // the safe side
-    $exists = db_query('SELECT COUNT(*) FROM {webform_ab_forms} ' .
+    $exists = (bool) db_query('SELECT 1 FROM {webform_ab_forms} ' .
       'WHERE test_nid = :test_nid AND webform_nid = :webform_nid',
       array(
         ':test_nid' => $form_state['values']['test_nid'],
@@ -286,7 +286,7 @@ function webform_ab_webform_list_add_submit($form, &$form_state) {
  */
 function webform_ab_test_remove_webform($node, $webform_nid) {
   // Make sure the webform they want to remove is actually in the test
-  $form_is_included = db_query('SELECT COUNT(*) FROM {webform_ab_forms} ' .
+  $form_is_included = (bool) db_query('SELECT 1 FROM {webform_ab_forms} ' .
     'WHERE test_nid = :test_nid AND webform_nid = :webform_nid',
     array(':test_nid' => $node->nid, ':webform_nid' => $webform_nid))->fetchField() > 0;
   if ($form_is_included) {
