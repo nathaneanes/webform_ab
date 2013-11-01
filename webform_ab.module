@@ -759,6 +759,8 @@ function webform_ab_view(&$node, $view_mode) {
     }
     // Full node view: redirect to one of the included webforms
     elseif ($view_mode == 'full') {
+      // Ensure the redirect is never cached
+      drupal_page_is_cacheable(FALSE);
       // Pick query variables to pass along
       $query_vars = $_GET;
       unset($query_vars['q']);
