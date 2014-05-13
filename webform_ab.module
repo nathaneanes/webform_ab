@@ -223,7 +223,7 @@ function webform_ab_form(&$node, $form_state) {
     '#cols' => 60,
     '#rows' => 5,
     '#description' => t('Teaser for public use. This is is shown if this Webform A/B Test node is shown in a ' .
-      'list of nodes where only the teaser is displayed. This might be a description like, "Donate to our orgnization."'),
+      'list of nodes where only the teaser is displayed. This might be a description like, "Donate to our organization."'),
   );
   $form['test_settings']['webform_types'] = array(
     '#type' => 'radios',
