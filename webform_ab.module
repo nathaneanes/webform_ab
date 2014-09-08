@@ -447,7 +447,7 @@ function webform_ab_node_presave($node) {
       if ($config['enable'] > 0) {
         // The options for each plugin come in as a sub-array ('options'),
         // which we actually want a level up
-        if (is_array($node->win_conditions[$plugin_key]['options'])) {
+        if (isset($node->win_conditions[$plugin_key]['options']) && is_array($node->win_conditions[$plugin_key]['options'])) {
           $node->win_conditions[$plugin_key] = $node->win_conditions[$plugin_key]['options'];
         }
         // Load the plugin and see if it has a save prep function
